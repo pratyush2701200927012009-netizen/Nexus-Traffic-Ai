@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NEXUS — City Traffic Intelligence</title>
+<style>
+:root{
+  --bg:#0b0d13;--surface:#12151f;--card:#181c27;--card-h:#1d2130;
+  --border:rgba(255,255,255,0.07);--border-s:rgba(255,255,255,0.13);
+  --t1:#e8eaf0;--t2:#8b90a0;--t3:#4a5068;
+  --acc:#3b82f6;--acc-d:rgba(59,130,246,0.13);--acc-g:rgba(59,130,246,0.3);
+  --grn:#22c55e;--grn-d:rgba(34,197,94,0.13);
+  --amb:#f59e0b;--amb-d:rgba(245,158,11,0.13);
+  --red:#ef4444;--red-d:rgba(239,68,68,0.13);
+  --tel:#14b8a6;--tel-d:rgba(20,184,166,0.13);
+  --pur:#8b5cf6;--pur-d:rgba(139,92,246,0.13);
+  --r:8px;--rl:12px;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'SF Mono','Fira Code',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--t1);font-family:var(--font);font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden;padding-bottom:22px;}
+::-webkit-scrollbar{width:3px;height:3px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border-s);border-radius:2px;}
+
+/* ─── TOPBAR ─── */
+.topbar{height:48px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:14px;flex-shrink:0;}
+.logo{font-size:13px;font-weight:700;letter-spacing:.1em;display:flex;align-items:center;gap:8px;flex-shrink:0;user-select:none;}
+.logo-icon{width:24px;height:24px;position:relative;flex-shrink:0;}
+.logo-icon svg{width:100%;height:100%;}
+.sep{width:1px;height:20px;background:var(--border-s);flex-shrink:0;}
+.nav{display:flex;gap:1px;}
+.nav{overflow-x:auto;scrollbar-width:none;}
+.nav::-webkit-scrollbar{display:none;}
+.tab{padding:5px 12px;font-size:12px;color:var(--t2);border-radius:6px;cursor:pointer;transition:all .14s;white-space:nowrap;user-select:none;position:relative;}
+.tab:hover{color:var(--t1);background:rgba(255,255,255,0.04);}
+.tab.on{color:var(--acc);background:var(--acc-d);}
+.tab::after{content:attr(data-key);position:absolute;top:2px;right:3px;font-size:7px;color:var(--t3);opacity:0;transition:opacity .2s;}
+.tab:hover::after{opacity:.8;}
+.nbadge{display:inline-block;width:14px;height:14px;background:var(--red);color:#fff;border-radius:50%;font-size:8px;font-weight:700;text-align:center;line-height:14px;margin-left:3px;vertical-align:middle;}
+.tb-city{font-size:11px;color:var(--t2);padding:3px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;flex-shrink:0;}
+.tb-status{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--grn);padding:3px 9px;background:var(--grn-d);border:1px solid rgba(34,197,94,0.2);border-radius:100px;flex-shrink:0;}
+.sdot{width:5px;height:5px;border-radius:50%;background:var(--grn);animation:blink 2s ease-in-out infinite;}
+.tb-time{font-size:11px;color:var(--t2);font-family:var(--mono);margin-left:auto;flex-shrink:0;}
+.tb-links{display:flex;gap:6px;flex-shrink:0;}
+.tb-link{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2);padding:3px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;text-decoration:none;transition:all .13s;cursor:pointer;}
+.tb-link:hover{color:var(--t1);border-color:var(--border-s);}
+.tb-link svg{width:12px;height:12px;fill:currentColor;}
+
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pop{0%{transform:scale(.92);opacity:0}100%{transform:scale(1);opacity:1}}
+
+/* ─── VIEWS ─── */
+.view{display:none;flex:1;overflow:hidden;}
+.view.on{display:flex;}
+
+/* ═══════════ NERVE CENTER ═══════════ */
+#v-nerve{display:grid;grid-template-columns:214px 1fr 278px;overflow:hidden;}
+#v-nerve.on{display:grid;}
+
+/* LEFT */
+.lp{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;}
+.ps{padding:12px 13px;border-bottom:1px solid var(--border);}
+.slbl{font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--t3);text-transform:uppercase;margin-bottom:8px;}
+.mr{display:flex;justify-content:space-between;align-items:center;padding:4px 0;}
+.ml{font-size:12px;color:var(--t2);}
+.mv{font-size:12px;font-weight:600;font-family:var(--mono);}
+.mv.g{color:var(--grn)}.mv.a{color:var(--amb)}.mv.r{color:var(--red)}.mv.b{color:var(--acc)}.mv.t{color:var(--tel)}
+.cbar{height:3px;background:var(--border);border-radius:2px;margin-top:3px;overflow:hidden;}
+.cbf{height:100%;border-radius:2px;transition:width 1s;}
+.weather-row{display:flex;align-items:center;gap:7px;padding:5px 8px;background:rgba(20,184,166,0.07);border:1px solid rgba(20,184,166,0.14);border-radius:var(--r);margin-bottom:7px;font-size:11px;color:var(--tel);}
+.ii{padding:7px 9px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:5px;cursor:pointer;transition:all .14s;}
+.ii:hover{background:var(--card-h);border-color:var(--border-s);}
+.it{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;}
+.it.acc{color:var(--red)}.it.evt{color:var(--pur)}.it.rw{color:var(--amb)}
+.iloc{font-size:12px;color:var(--t1);margin:2px 0;}
+.imeta{font-size:11px;color:var(--t3);}
+.sr{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);}
+.sr:last-child{border:none;}
+.sdot2{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.sdot2.g{background:var(--grn);box-shadow:0 0 5px var(--grn);}
+.sdot2.a{background:var(--amb);box-shadow:0 0 5px var(--amb);}
+.sdot2.r{background:var(--red);box-shadow:0 0 5px var(--red);}
+.si{flex:1;min-width:0;}
+.sn{font-size:11px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.st{font-size:10px;color:var(--t3);font-family:var(--mono);}
+.srec{font-size:10px;color:var(--tel);padding:2px 5px;background:var(--tel-d);border-radius:4px;white-space:nowrap;flex-shrink:0;}
+.srec.ok{color:var(--grn);background:var(--grn-d);}
+.model-perf{display:flex;flex-direction:column;gap:5px;}
+.mp-row{display:flex;align-items:center;gap:8px;}
+.mp-lbl{font-size:10px;color:var(--t2);width:28px;flex-shrink:0;}
+.mp-bar{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.mp-fill{height:100%;border-radius:2px;background:var(--acc);}
+.mp-val{font-size:10px;font-family:var(--mono);color:var(--t2);width:30px;text-align:right;flex-shrink:0;}
+
+/* MAP */
+.ma{position:relative;background:#090c10;overflow:hidden;}
+.csvc{width:100%;height:100%;}
+.msr{position:absolute;top:13px;left:13px;right:13px;display:flex;gap:8px;pointer-events:none;}
+.ms{background:rgba(10,13,20,0.9);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;backdrop-filter:blur(14px);}
+.msv{font-size:20px;font-weight:700;font-family:var(--mono);}
+.msl{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-top:1px;}
+.mbc{position:absolute;bottom:13px;left:13px;display:flex;flex-direction:column;gap:5px;}
+.mbt{width:33px;height:33px;background:rgba(10,13,20,0.9);border:1px solid var(--border);border-radius:var(--r);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t2);font-size:13px;backdrop-filter:blur(14px);transition:all .13s;user-select:none;}
+.mbt:hover{color:var(--t1);border-color:var(--border-s);}
+.mbt.on{color:var(--acc);border-color:rgba(59,130,246,.4);background:var(--acc-d);}
+.lgd{position:absolute;bottom:13px;right:13px;background:rgba(10,13,20,0.9);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;backdrop-filter:blur(14px);}
+.lgd-t{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;}
+.lgd-r{display:flex;align-items:center;gap:7px;margin-bottom:3px;font-size:11px;color:var(--t2);}
+.lgd-s{width:18px;height:3px;border-radius:2px;}
+
+/* RIGHT PANEL */
+.rp{background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.cw{padding:12px 13px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.ch{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;}
+.ct{font-size:11px;font-weight:600;}
+.hts{display:flex;gap:3px;}
+.ht{font-size:10px;padding:2px 7px;border-radius:4px;cursor:pointer;color:var(--t2);}
+.ht.on{background:var(--acc-d);color:var(--acc);}
+.cauw{padding:12px 13px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.car{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+.car:last-of-type{border:none;}
+.can{flex:1;font-size:11px;color:var(--t1);}
+.cab{width:66px;height:3px;background:var(--border);border-radius:2px;}
+.caf{height:100%;border-radius:2px;}
+.cap{font-size:10px;font-family:var(--mono);width:28px;text-align:right;}
+.cf-box{margin-top:8px;padding:7px 9px;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.15);border-radius:6px;font-size:11px;color:rgba(239,68,68,.88);line-height:1.5;}
+
+/* CHAT */
+.chat-p{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:11px 13px;gap:7px;}
+.chat-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;}
+.cm{border-radius:var(--r);font-size:12px;line-height:1.55;}
+.cm.ai{background:var(--card);border:1px solid var(--border);padding:8px 10px;align-self:flex-start;max-width:100%;animation:pop .2s ease;}
+.cm.u{background:var(--acc-d);border:1px solid rgba(59,130,246,.18);padding:7px 10px;align-self:flex-end;max-width:85%;animation:pop .2s ease;}
+.cm.th{background:var(--pur-d);border:1px solid rgba(139,92,246,.15);padding:7px 10px;align-self:flex-start;color:var(--t2);font-style:italic;animation:pop .15s ease;}
+.mf{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;margin-bottom:3px;}
+.mf.nx{color:var(--acc)}.mf.op{color:var(--t3)}
+.chips{display:flex;flex-wrap:wrap;gap:4px;}
+.chip{font-size:11px;padding:3px 8px;background:var(--card);border:1px solid var(--border);border-radius:5px;cursor:pointer;color:var(--t2);transition:all .12s;white-space:nowrap;user-select:none;}
+.chip:hover{color:var(--acc);border-color:rgba(59,130,246,.3);background:var(--acc-d);}
+.ci-row{display:flex;gap:6px;}
+.ci{flex:1;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;color:var(--t1);font-size:12px;font-family:var(--font);outline:none;transition:border-color .14s;}
+.ci:focus{border-color:rgba(59,130,246,.4);}
+.ci::placeholder{color:var(--t3);}
+.cs{width:32px;height:32px;background:var(--acc);border:none;border-radius:var(--r);cursor:pointer;color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .13s;}
+.cs:hover{background:#2563eb;}
+.cs:disabled{background:var(--border-s);cursor:not-allowed;}
+
+/* ═══════════ TIMELINE ═══════════ */
+#v-timeline{flex-direction:column;}
+#v-timeline.on{display:flex;}
+.tlh{background:var(--surface);border-bottom:1px solid var(--border);padding:11px 18px;display:flex;align-items:center;gap:12px;flex-shrink:0;flex-wrap:wrap;}
+.tlh h2{font-size:13px;font-weight:600;}
+.zsel{display:flex;gap:3px;flex-wrap:wrap;}
+.zb{font-size:11px;padding:4px 9px;border-radius:5px;border:1px solid var(--border);background:var(--card);color:var(--t2);cursor:pointer;transition:all .12s;user-select:none;}
+.zb:hover{border-color:var(--border-s);color:var(--t1);}
+.zb.on{background:var(--acc-d);border-color:rgba(59,130,246,.3);color:var(--acc);}
+.hsel{display:flex;gap:3px;margin-left:auto;}
+.hb{font-size:11px;padding:4px 9px;border-radius:5px;border:1px solid var(--border);background:var(--card);color:var(--t2);cursor:pointer;transition:all .12s;user-select:none;}
+.hb.on{background:var(--tel-d);border-color:rgba(20,184,166,.3);color:var(--tel);}
+.tlb{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:11px;padding:13px;overflow:hidden;}
+.tc{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:13px;display:flex;flex-direction:column;overflow:hidden;transition:border-color .15s;}
+.tc:hover{border-color:var(--border-s);}
+.tch{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px;flex-shrink:0;}
+.tct{font-size:12px;font-weight:600;}
+.tcs{font-size:10px;color:var(--t3);margin-top:2px;}
+.tcb{font-size:11px;font-family:var(--mono);padding:2px 7px;border-radius:4px;font-weight:600;}
+.tcb.r{background:var(--red-d);color:var(--red)}.tcb.a{background:var(--amb-d);color:var(--amb)}.tcb.g{background:var(--grn-d);color:var(--grn)}
+.cc{flex:1;position:relative;min-height:0;}
+
+/* ═══════════ SIGNALS ═══════════ */
+#v-signals{flex-direction:column;}
+#v-signals.on{display:flex;}
+.sigh{background:var(--surface);border-bottom:1px solid var(--border);padding:11px 18px;display:flex;align-items:center;gap:11px;flex-shrink:0;}
+.sigh h2{font-size:13px;font-weight:600;}
+.sigb{flex:1;display:grid;grid-template-columns:1fr 264px;overflow:hidden;}
+.sgw{padding:13px;overflow-y:auto;}
+.sg{display:grid;grid-template-columns:repeat(auto-fill,minmax(176px,1fr));gap:9px;}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:13px;cursor:pointer;transition:all .14s;position:relative;overflow:hidden;}
+.sc:hover{border-color:var(--border-s);background:var(--card);}
+.sc.sel{border-color:rgba(59,130,246,.4);background:var(--acc-d);}
+.sc.rec{border-color:rgba(20,184,166,.35);}
+.scn{font-size:12px;font-weight:600;margin-bottom:2px;}
+.scz{font-size:10px;color:var(--t3);margin-bottom:9px;}
+.scp{display:flex;margin-bottom:7px;border-radius:3px;overflow:hidden;height:20px;}
+.pb{display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;transition:width .4s;}
+.pb-g{background:rgba(34,197,94,.22);color:var(--grn);}
+.pb-y{background:rgba(245,158,11,.22);color:var(--amb);min-width:12px;}
+.pb-r{background:rgba(239,68,68,.22);color:var(--red);}
+.scq{font-size:10px;color:var(--t3);display:flex;justify-content:space-between;}
+.scrc{position:absolute;top:8px;right:8px;font-size:10px;padding:2px 6px;border-radius:4px;background:var(--tel-d);color:var(--tel);font-weight:600;}
+.sd{background:var(--surface);border-left:1px solid var(--border);padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
+.sd-title{font-size:13px;font-weight:600;}
+.sd-sub{font-size:11px;color:var(--t3);}
+.dl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:6px;}
+.te{display:flex;flex-direction:column;gap:6px;}
+.tr{display:flex;align-items:center;gap:8px;}
+.tpl{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+.tpn{font-size:11px;color:var(--t2);width:46px;}
+.ti{width:54px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:4px 7px;color:var(--t1);font-family:var(--mono);font-size:12px;outline:none;text-align:right;}
+.ti:focus{border-color:rgba(59,130,246,.4);}
+.tu{font-size:10px;color:var(--t3);}
+.ab{width:100%;padding:8px;border:none;border-radius:var(--r);color:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:all .13s;}
+.ab.pri{background:var(--acc)}.ab.pri:hover{background:#2563eb;}
+.ab.app{background:var(--tel)}.ab.app:hover{background:#0d9488;}
+.ab.sec{background:var(--card);color:var(--t2);border:1px solid var(--border)}.ab.sec:hover{border-color:var(--border-s);color:var(--t1);}
+.rec-box{padding:8px 10px;background:var(--tel-d);border:1px solid rgba(20,184,166,.2);border-radius:var(--r);font-size:11px;color:var(--tel);line-height:1.5;}
+
+/* ═══════════ SANDBOX ═══════════ */
+#v-sandbox{flex-direction:column;}
+#v-sandbox.on{display:flex;}
+.sbh{background:var(--surface);border-bottom:1px solid var(--border);padding:11px 18px;display:flex;align-items:center;gap:11px;flex-shrink:0;}
+.sbb{flex:1;display:grid;grid-template-columns:244px 1fr;overflow:hidden;}
+.sbc{background:var(--surface);border-right:1px solid var(--border);padding:13px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;}
+.cgl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:7px;}
+.scc{padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);cursor:pointer;font-size:11px;color:var(--t2);display:flex;align-items:center;gap:6px;margin-bottom:4px;transition:all .12s;user-select:none;}
+.scc:hover{border-color:var(--border-s);color:var(--t1);}
+.scc.on{border-color:rgba(245,158,11,.35);color:var(--amb);background:var(--amb-d);}
+.sci{font-size:14px;}
+.sw{margin-bottom:8px;}
+.sl2{display:flex;justify-content:space-between;font-size:11px;color:var(--t2);margin-bottom:4px;}
+.sv{color:var(--t1);font-family:var(--mono);}
+input[type=range]{width:100%;height:3px;-webkit-appearance:none;background:var(--border);border-radius:2px;outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;background:var(--acc);border-radius:50%;cursor:pointer;}
+.tg-row{display:flex;align-items:center;justify-content:space-between;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:4px;font-size:11px;color:var(--t2);cursor:pointer;}
+.tg{width:26px;height:14px;background:var(--border-s);border-radius:7px;position:relative;transition:background .15s;flex-shrink:0;}
+.tg.on{background:var(--acc);}
+.tgk{position:absolute;top:2px;left:2px;width:10px;height:10px;background:#fff;border-radius:50%;transition:left .15s;}
+.tg.on .tgk{left:14px;}
+.run-btn{width:100%;padding:9px;background:linear-gradient(135deg,var(--acc),#6366f1);border:none;border-radius:var(--r);color:#fff;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.03em;transition:opacity .13s;}
+.run-btn:hover{opacity:.85;}
+.run-btn:disabled{opacity:.5;cursor:not-allowed;}
+.sim-res{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:10px;display:none;animation:pop .25s ease;}
+.sr2{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:11px;border-bottom:1px solid rgba(255,255,255,0.04);}
+.sr2:last-child{border:none;}
+.srn{color:var(--t2);}
+.srd{font-family:var(--mono);font-weight:600;}
+.srd.neg{color:var(--grn)}.srd.pos{color:var(--red)}.srd.n{color:var(--t2);}
+.sbm{position:relative;overflow:hidden;}
+
+/* ═══════════ ANALYTICS ═══════════ */
+#v-analytics{flex-direction:column;}
+#v-analytics.on{display:flex;}
+.alh{background:var(--surface);border-bottom:1px solid var(--border);padding:11px 18px;display:flex;align-items:center;gap:11px;flex-shrink:0;}
+.alb{flex:1;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr;gap:11px;padding:13px;overflow:hidden;}
+.ac{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:13px;display:flex;flex-direction:column;overflow:hidden;transition:border-color .15s;}
+.ac:hover{border-color:var(--border-s);}
+.ach{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;flex-shrink:0;}
+.act{font-size:12px;font-weight:600;}
+.acs{font-size:10px;color:var(--t3);margin-top:2px;}
+.acv{font-size:24px;font-weight:700;font-family:var(--mono);}
+.acd{font-size:11px;margin-left:6px;}
+.acd.g{color:var(--grn)}.acd.r{color:var(--red)}
+.acp{flex:1;min-height:0;}
+.kg{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:6px;}
+.ki{background:var(--card);border-radius:var(--r);padding:8px 9px;}
+.kv{font-size:17px;font-weight:700;font-family:var(--mono);}
+.kl{font-size:10px;color:var(--t3);margin-top:2px;}
+
+/* TOAST */
+.toast{position:fixed;bottom:18px;right:18px;background:var(--card);border:1px solid var(--border-s);border-radius:var(--r);padding:9px 13px;font-size:12px;z-index:9999;transform:translateY(50px);opacity:0;transition:all .22s;pointer-events:none;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.ok{border-color:rgba(34,197,94,.35);color:var(--grn);}
+.toast.err{border-color:rgba(239,68,68,.35);color:var(--red);}
+
+/* TOUR OVERLAY */
+.tour-overlay{position:fixed;inset:0;background:rgba(5,7,12,.92);z-index:10000;display:flex;align-items:center;justify-content:center;animation:pop .3s ease;}
+.tour-box{background:var(--surface);border:1px solid var(--border-s);border-radius:var(--rl);padding:32px 36px;max-width:460px;width:90%;text-align:center;}
+.tour-logo{width:52px;height:52px;margin:0 auto 18px;position:relative;}
+.tour-logo svg{width:100%;height:100%;}
+.tour-box h1{font-size:22px;font-weight:700;letter-spacing:.05em;margin-bottom:8px;}
+.tour-box p{font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:22px;}
+.tour-stack{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:24px;}
+.tour-tag{font-size:11px;padding:3px 9px;border-radius:100px;border:1px solid var(--border-s);color:var(--t2);}
+.tour-tag.b{border-color:rgba(59,130,246,.4);color:var(--acc);background:var(--acc-d);}
+.tour-tag.g{border-color:rgba(34,197,94,.4);color:var(--grn);background:var(--grn-d);}
+.tour-tag.p{border-color:rgba(139,92,246,.4);color:var(--pur);background:var(--pur-d);}
+.tour-tag.t{border-color:rgba(20,184,166,.4);color:var(--tel);background:var(--tel-d);}
+.tour-btns{display:flex;gap:8px;justify-content:center;}
+.tour-btn{padding:9px 22px;border:none;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;transition:all .13s;}
+.tour-btn.pri{background:var(--acc);color:#fff;}.tour-btn.pri:hover{background:#2563eb;}
+.tour-btn.sec{background:var(--card);color:var(--t2);border:1px solid var(--border);}.tour-btn.sec:hover{color:var(--t1);}
+.tour-note{font-size:10px;color:var(--t3);margin-top:16px;}
+
+/* inline tag */
+.ti2{display:inline-block;padding:1px 5px;border-radius:3px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-right:3px;vertical-align:middle;}
+.ti2.lo{background:var(--grn-d);color:var(--grn)}.ti2.hi{background:var(--red-d);color:var(--red)}.ti2.mid{background:var(--amb-d);color:var(--amb)}
+</style>
+</head>
+<body>
+
+<!-- ─── TOUR ─── -->
+<div class="tour-overlay" id="tour">
+  <div class="tour-box">
+    <div class="tour-logo">
+      <svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="26" cy="26" r="24" stroke="#3b82f6" stroke-width="1.5" opacity=".4"/>
+        <circle cx="26" cy="26" r="13" stroke="#3b82f6" stroke-width="1.5" opacity=".6"/>
+        <circle cx="26" cy="26" r="5" fill="#3b82f6"/>
+        <line x1="26" y1="2" x2="26" y2="10" stroke="#3b82f6" stroke-width="1.5" opacity=".7"/>
+        <line x1="26" y1="42" x2="26" y2="50" stroke="#3b82f6" stroke-width="1.5" opacity=".7"/>
+        <line x1="2" y1="26" x2="10" y2="26" stroke="#3b82f6" stroke-width="1.5" opacity=".7"/>
+        <line x1="42" y1="26" x2="50" y2="26" stroke="#3b82f6" stroke-width="1.5" opacity=".7"/>
+        <line x1="8" y1="8" x2="14" y2="14" stroke="#3b82f6" stroke-width="1" opacity=".4"/>
+        <line x1="44" y1="8" x2="38" y2="14" stroke="#3b82f6" stroke-width="1" opacity=".4"/>
+        <line x1="8" y1="44" x2="14" y2="38" stroke="#3b82f6" stroke-width="1" opacity=".4"/>
+        <line x1="44" y1="44" x2="38" y2="38" stroke="#3b82f6" stroke-width="1" opacity=".4"/>
+      </svg>
+    </div>
+    <h1>NEXUS</h1>
+    <p>Neural Exchange for Urban Situational Intelligence — a full-stack AI platform for real-time city traffic prediction, signal optimization, and causal analysis.</p>
+    <div class="tour-stack">
+      <span class="tour-tag b">Graph Neural Network</span>
+      <span class="tour-tag p">Multi-Agent RL</span>
+      <span class="tour-tag g">Causal AI</span>
+      <span class="tour-tag t">Claude API</span>
+      <span class="tour-tag">Kafka · Neo4j · TimescaleDB</span>
+      <span class="tour-tag">PyTorch Geometric</span>
+    </div>
+    <div class="tour-btns">
+      <button class="tour-btn pri" onclick="closeTour()">Launch Platform →</button>
+      <button class="tour-btn sec" onclick="closeTour()">Skip intro</button>
+    </div>
+    <div class="tour-note">NEXUS Assistant (right panel) is powered by Claude API · Ask it anything about city traffic</div>
+  </div>
+</div>
+
+<!-- ─── TOPBAR ─── -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="11" stroke="#3b82f6" stroke-width="1.2" opacity=".4"/>
+        <circle cx="12" cy="12" r="5.5" stroke="#3b82f6" stroke-width="1.2" opacity=".65"/>
+        <circle cx="12" cy="12" r="2.5" fill="#3b82f6"/>
+        <line x1="12" y1="1" x2="12" y2="4.5" stroke="#3b82f6" stroke-width="1.2" opacity=".7"/>
+        <line x1="12" y1="19.5" x2="12" y2="23" stroke="#3b82f6" stroke-width="1.2" opacity=".7"/>
+        <line x1="1" y1="12" x2="4.5" y2="12" stroke="#3b82f6" stroke-width="1.2" opacity=".7"/>
+        <line x1="19.5" y1="12" x2="23" y2="12" stroke="#3b82f6" stroke-width="1.2" opacity=".7"/>
+      </svg>
+    </div>
+    NEXUS
+  </div>
+  <div class="sep"></div>
+  <div class="nav" id="nav">
+    <div class="tab on" data-v="nerve" data-key="1">City Nerve Center</div>
+    <div class="tab" data-v="timeline" data-key="2">Prediction Timeline</div>
+    <div class="tab" data-v="signals" data-key="3">Signal Control <span class="nbadge" id="nbadge">4</span></div>
+    <div class="tab" data-v="sandbox" data-key="4">Scenario Sandbox</div>
+    <div class="tab" data-v="analytics" data-key="5">Analytics</div>
+  </div>
+  <div class="tb-city">San Francisco, CA</div>
+  <div class="tb-status"><div class="sdot"></div><span id="sensor-count">847 sensors active</span></div>
+  <div class="tb-links">
+    <a class="tb-link" href="https://github.com" target="_blank" title="GitHub Repository">
+      <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub
+    </a>
+    <div class="tb-link" onclick="showToast('Host on GitHub Pages or Vercel to get a live URL','')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="10" rx="2"/><path d="M1 6h14"/></svg>
+      Live Demo
+    </div>
+  </div>
+  <div class="tb-time" id="clock">--:--:-- PST</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- VIEW 1: CITY NERVE CENTER                  -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="view on" id="v-nerve">
+
+  <!-- LEFT PANEL -->
+  <div class="lp">
+    <div class="ps">
+      <div class="slbl">City Overview</div>
+      <div class="weather-row">🌧 Rain · 0.3 in/hr · 52°F · −12% throughput</div>
+      <div class="mr"><span class="ml">Avg speed</span><span class="mv a" id="live-speed">18.3 mph</span></div>
+      <div class="cbar"><div class="cbf" id="cbar-speed" style="width:62%;background:var(--amb)"></div></div>
+      <div class="mr" style="margin-top:6px"><span class="ml">Network congestion</span><span class="mv a" id="live-cong">62%</span></div>
+      <div class="mr"><span class="ml">Vehicles tracked</span><span class="mv" id="live-veh">142,810</span></div>
+      <div class="mr"><span class="ml">Delay vs baseline</span><span class="mv r">+34%</span></div>
+      <div class="mr"><span class="ml">Incident clearance</span><span class="mv g">94%</span></div>
+      <div class="mr"><span class="ml">Model confidence</span><span class="mv t">87%</span></div>
+      <div class="mr"><span class="ml">Sensors online</span><span class="mv b" id="live-sensors">847 / 851</span></div>
+    </div>
+
+    <div class="ps">
+      <div class="slbl">Active Incidents (3)</div>
+      <div class="ii"><div class="it acc">⬤ Accident</div><div class="iloc">I-80 WB @ Bay Bridge</div><div class="imeta">2 lanes blocked · est. <span id="incident-eta">22</span> min</div></div>
+      <div class="ii"><div class="it evt">⬤ Event</div><div class="iloc">Chase Center · Warriors</div><div class="imeta">Ends 10:15 PM · 18,064 cap. · <span style="color:var(--pur)">surge +45m</span></div></div>
+      <div class="ii"><div class="it rw">⬤ Roadwork</div><div class="iloc">Market St @ 5th</div><div class="imeta">10 PM–5 AM · 1 lane</div></div>
+    </div>
+
+    <div class="ps">
+      <div class="slbl">RL Signal Recommendations</div>
+      <div class="sr"><div class="sdot2 g"></div><div class="si"><div class="sn">Mission @ 16th</div><div class="st">G:42s / R:38s</div></div><div class="srec">+12s green</div></div>
+      <div class="sr"><div class="sdot2 a"></div><div class="si"><div class="sn">Van Ness @ Market</div><div class="st">G:55s / R:45s</div></div><div class="srec">−8s red</div></div>
+      <div class="sr"><div class="sdot2 r"></div><div class="si"><div class="sn">3rd St @ King</div><div class="st">G:28s / R:62s</div></div><div class="srec">+20s green</div></div>
+      <div class="sr"><div class="sdot2 g"></div><div class="si"><div class="sn">Folsom @ 1st</div><div class="st">G:38s / R:42s</div></div><div class="srec ok">Optimal</div></div>
+    </div>
+
+    <div class="ps">
+      <div class="slbl">NEXUS-ST Accuracy</div>
+      <div class="model-perf">
+        <div class="mp-row"><span class="mp-lbl">15m</span><div class="mp-bar"><div class="mp-fill" style="width:94%"></div></div><span class="mp-val" style="color:var(--grn)">5.2%</span></div>
+        <div class="mp-row"><span class="mp-lbl">30m</span><div class="mp-bar"><div class="mp-fill" style="width:87%"></div></div><span class="mp-val" style="color:var(--grn)">7.8%</span></div>
+        <div class="mp-row"><span class="mp-lbl">60m</span><div class="mp-bar"><div class="mp-fill" style="width:78%;background:var(--amb)"></div></div><span class="mp-val" style="color:var(--amb)">11.4%</span></div>
+        <div class="mp-row"><span class="mp-lbl">120m</span><div class="mp-bar"><div class="mp-fill" style="width:68%;background:var(--amb)"></div></div><span class="mp-val" style="color:var(--amb)">15.9%</span></div>
+      </div>
+      <div style="font-size:10px;color:var(--t3);margin-top:6px;">MAPE · lower is better · target &lt;8% @ 15m</div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="ma">
+    <svg class="csvc" viewBox="0 0 620 560" preserveAspectRatio="xMidYMid slice">
+      <rect width="620" height="560" fill="#090c10"/>
+      <!-- Bay water -->
+      <path d="M0 440 Q100 400 120 440 Q170 485 220 472 Q270 515 320 535 L0 560Z" fill="#0c1b2a" opacity=".85"/>
+      <!-- City blocks -->
+      <rect x="18" y="118" width="52" height="62" fill="#0f1320" rx="2"/><rect x="88" y="118" width="64" height="44" fill="#0f1320" rx="2"/>
+      <rect x="168" y="118" width="72" height="64" fill="#0f1320" rx="2"/><rect x="262" y="118" width="62" height="54" fill="#0f1320" rx="2"/>
+      <rect x="352" y="118" width="62" height="54" fill="#0f1320" rx="2"/><rect x="448" y="118" width="64" height="54" fill="#0f1320" rx="2"/>
+      <rect x="18" y="208" width="44" height="82" fill="#0f1320" rx="2"/><rect x="80" y="212" width="58" height="60" fill="#0f1320" rx="2"/>
+      <rect x="168" y="212" width="68" height="74" fill="#0f1320" rx="2"/><rect x="262" y="212" width="64" height="82" fill="#0f1320" rx="2"/>
+      <rect x="352" y="212" width="62" height="82" fill="#0f1320" rx="2"/><rect x="448" y="212" width="140" height="82" fill="#0f1320" rx="2"/>
+      <rect x="18" y="332" width="210" height="42" fill="#0f1320" rx="2"/><rect x="262" y="332" width="104" height="42" fill="#0f1320" rx="2"/>
+      <!-- Roads base -->
+      <line x1="0" y1="102" x2="620" y2="102" stroke="#18203a" stroke-width="8"/>
+      <line x1="0" y1="198" x2="620" y2="198" stroke="#18203a" stroke-width="5"/>
+      <line x1="0" y1="302" x2="620" y2="302" stroke="#18203a" stroke-width="8"/>
+      <line x1="0" y1="392" x2="620" y2="392" stroke="#18203a" stroke-width="5"/>
+      <line x1="82" y1="0" x2="82" y2="560" stroke="#18203a" stroke-width="5"/>
+      <line x1="168" y1="0" x2="168" y2="560" stroke="#18203a" stroke-width="8"/>
+      <line x1="258" y1="0" x2="258" y2="560" stroke="#18203a" stroke-width="5"/>
+      <line x1="348" y1="0" x2="348" y2="560" stroke="#18203a" stroke-width="8"/>
+      <line x1="442" y1="0" x2="442" y2="560" stroke="#18203a" stroke-width="5"/>
+      <line x1="528" y1="0" x2="528" y2="560" stroke="#18203a" stroke-width="4"/>
+      <line x1="0" y1="366" x2="432" y2="58" stroke="#18203a" stroke-width="10"/>
+      <!-- Congestion overlays -->
+      <line x1="0" y1="102" x2="168" y2="102" stroke="#ef4444" stroke-width="5" opacity=".75"/>
+      <line x1="168" y1="198" x2="348" y2="198" stroke="#ef4444" stroke-width="5" opacity=".68"/>
+      <line x1="0" y1="366" x2="215" y2="196" stroke="#ef4444" stroke-width="9" opacity=".75"/>
+      <line x1="168" y1="102" x2="442" y2="102" stroke="#f59e0b" stroke-width="5" opacity=".62"/>
+      <line x1="0" y1="302" x2="348" y2="302" stroke="#f59e0b" stroke-width="5" opacity=".55"/>
+      <line x1="258" y1="0" x2="258" y2="198" stroke="#f59e0b" stroke-width="5" opacity=".52"/>
+      <line x1="215" y1="196" x2="432" y2="58" stroke="#f59e0b" stroke-width="9" opacity=".52"/>
+      <line x1="442" y1="102" x2="620" y2="102" stroke="#14b8a6" stroke-width="5" opacity=".52"/>
+      <line x1="348" y1="198" x2="620" y2="198" stroke="#14b8a6" stroke-width="5" opacity=".48"/>
+      <line x1="348" y1="302" x2="620" y2="302" stroke="#14b8a6" stroke-width="5" opacity=".48"/>
+      <!-- Traffic particles -->
+      <circle r="3" fill="#ef4444" opacity=".9"><animateMotion dur="4.2s" repeatCount="indefinite" path="M610,102 L0,102"/></circle>
+      <circle r="2.5" fill="#ef4444" opacity=".7"><animateMotion dur="3.8s" repeatCount="indefinite" path="M348,198 L168,198" begin="1s"/></circle>
+      <circle r="2.5" fill="#f59e0b" opacity=".82"><animateMotion dur="5.8s" repeatCount="indefinite" path="M0,198 L340,198"/></circle>
+      <circle r="3" fill="#14b8a6" opacity=".75"><animateMotion dur="3.4s" repeatCount="indefinite" path="M442,102 L620,102"/></circle>
+      <circle r="2.5" fill="#f59e0b" opacity=".7"><animateMotion dur="6.8s" repeatCount="indefinite" path="M258,0 L258,560"/></circle>
+      <circle r="3.5" fill="#ef4444" opacity=".85"><animateMotion dur="7.2s" repeatCount="indefinite" path="M432,58 L0,366"/></circle>
+      <circle r="2" fill="#14b8a6" opacity=".62"><animateMotion dur="3.9s" repeatCount="indefinite" path="M348,302 L620,302"/></circle>
+      <circle r="2.5" fill="#f59e0b" opacity=".65"><animateMotion dur="4.8s" repeatCount="indefinite" path="M0,302 L258,302"/></circle>
+      <circle r="2" fill="#ef4444" opacity=".6"><animateMotion dur="5.2s" repeatCount="indefinite" path="M82,560 L82,0" begin="2s"/></circle>
+      <!-- Hot intersection: Van Ness @ Market -->
+      <circle cx="168" cy="198" r="10" fill="#ef4444" opacity=".88"/>
+      <circle cx="168" cy="198" r="10" fill="none" stroke="#ef4444" stroke-width="1.5">
+        <animate attributeName="r" values="10;26;10" dur="2.3s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values=".5;0;.5" dur="2.3s" repeatCount="indefinite"/>
+      </circle>
+      <!-- Warm intersections -->
+      <circle cx="258" cy="102" r="6.5" fill="#f59e0b" opacity=".88"/>
+      <circle cx="348" cy="302" r="6.5" fill="#f59e0b" opacity=".88"/>
+      <circle cx="168" cy="102" r="7.5" fill="#f59e0b" opacity=".9"/>
+      <!-- Cool intersections -->
+      <circle cx="442" cy="198" r="5" fill="#14b8a6" opacity=".72"/>
+      <circle cx="528" cy="102" r="5" fill="#14b8a6" opacity=".72"/>
+      <circle cx="442" cy="302" r="4.5" fill="#14b8a6" opacity=".65"/>
+      <!-- I-80 accident marker -->
+      <g transform="translate(82,102)">
+        <circle r="13" fill="#ef4444" opacity=".12"/>
+        <circle r="13" fill="none" stroke="#ef4444" stroke-width="1" opacity=".2">
+          <animate attributeName="r" values="13;20" dur="1.6s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values=".2;0" dur="1.6s" repeatCount="indefinite"/>
+        </circle>
+        <text x="0" y="4.5" text-anchor="middle" font-size="12" fill="#ef4444">⚠</text>
+      </g>
+      <!-- Chase Center event -->
+      <g transform="translate(348,400)">
+        <circle r="28" fill="#8b5cf6" opacity=".1"/>
+        <circle r="12" fill="#8b5cf6" opacity=".22"/>
+        <text x="0" y="4" text-anchor="middle" font-size="12" fill="#8b5cf6">🏀</text>
+        <text x="20" y="-5" text-anchor="start" font-size="9" fill="#8b5cf6">Warriors</text>
+        <text x="20" y="8" text-anchor="start" font-size="8" fill="rgba(139,92,246,.6)">ends 10:15 PM</text>
+      </g>
+      <!-- Predicted hotspot -->
+      <circle cx="258" cy="258" r="28" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="6 4" opacity=".65">
+        <animateTransform attributeName="transform" type="rotate" from="0 258 258" to="360 258 258" dur="10s" repeatCount="indefinite"/>
+      </circle>
+      <text x="292" y="255" font-size="9" fill="#f59e0b" opacity=".85">⬡ Predicted +30m</text>
+      <!-- Route highlight for emergency -->
+      <polyline points="200,392 200,302 348,302 348,198" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-dasharray="8 5" opacity=".0" id="emerg-route">
+        <animate attributeName="opacity" values="0;0;.7;.7;0" dur="8s" repeatCount="indefinite" begin="3s"/>
+      </polyline>
+      <!-- Labels -->
+      <text x="310" y="93" text-anchor="middle" font-size="9" fill="rgba(255,255,255,.22)">I-80</text>
+      <text x="50" y="295" font-size="9" fill="rgba(255,255,255,.22)" transform="rotate(-90,50,295)">Van Ness</text>
+      <text x="178" y="162" font-size="9" fill="rgba(255,255,255,.22)" transform="rotate(-34,178,162)">Market St</text>
+      <text x="510" y="93" text-anchor="middle" font-size="9" fill="rgba(255,255,255,.2)">Embarcadero</text>
+    </svg>
+    <!-- Stat overlay -->
+    <div class="msr">
+      <div class="ms"><div class="msv" style="color:var(--red)" id="map-cong">62%</div><div class="msl">Congestion</div></div>
+      <div class="ms"><div class="msv" style="color:var(--amb)" id="map-speed">18.3 mph</div><div class="msl">Avg Speed</div></div>
+      <div class="ms"><div class="msv">3</div><div class="msl">Incidents</div></div>
+      <div class="ms"><div class="msv" style="color:var(--pur)">+45m</div><div class="msl">Event Surge ETA</div></div>
+    </div>
+    <!-- Controls -->
+    <div class="mbc">
+      <div class="mbt on" title="Congestion layer">⬛</div>
+      <div class="mbt" title="Prediction layer">◈</div>
+      <div class="mbt" title="Incidents" onclick="showToast('Incidents layer toggled')">⚠</div>
+      <div class="mbt" title="Signal grid" onclick="document.querySelector('[data-v=signals]').click()">🟢</div>
+      <div class="mbt" title="Zoom in" onclick="showToast('Mapbox GL JS handles zoom in production')">+</div>
+      <div class="mbt" title="Zoom out">−</div>
+    </div>
+    <!-- Legend -->
+    <div class="lgd">
+      <div class="lgd-t">Congestion</div>
+      <div class="lgd-r"><div class="lgd-s" style="background:var(--red)"></div>Severe &lt;15 mph</div>
+      <div class="lgd-r"><div class="lgd-s" style="background:var(--amb)"></div>Heavy 15–25</div>
+      <div class="lgd-r"><div class="lgd-s" style="background:var(--grn)"></div>Moderate 25–35</div>
+      <div class="lgd-r"><div class="lgd-s" style="background:var(--tel)"></div>Free flow &gt;35</div>
+      <div class="lgd-r" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
+        <div style="width:18px;height:10px;border:1px dashed var(--amb);border-radius:2px"></div>Predicted hotspot
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="rp">
+    <!-- Forecast chart -->
+    <div class="cw">
+      <div class="ch">
+        <div class="ct">Congestion forecast · 5th &amp; Mission</div>
+        <div class="hts">
+          <div class="ht on">60m</div><div class="ht">120m</div><div class="ht">All</div>
+        </div>
+      </div>
+      <svg width="100%" height="108" viewBox="0 0 250 108">
+        <line x1="26" y1="8" x2="250" y2="8" stroke="rgba(255,255,255,0.04)" stroke-width=".5"/>
+        <line x1="26" y1="54" x2="250" y2="54" stroke="rgba(255,255,255,0.04)" stroke-width=".5"/>
+        <line x1="26" y1="100" x2="250" y2="100" stroke="rgba(255,255,255,0.04)" stroke-width=".5"/>
+        <text x="2" y="11" font-size="9" fill="rgba(139,144,160,.6)">100%</text>
+        <text x="2" y="57" font-size="9" fill="rgba(139,144,160,.6)">50%</text>
+        <text x="2" y="103" font-size="9" fill="rgba(139,144,160,.6)">0%</text>
+        <path fill="#3b82f6" opacity=".08" d="M26,37 L60,33 L92,30 L122,27 L152,22 L182,17 L212,13 L244,12 L244,6 L212,6 L182,8 L152,10 L122,11 L92,14 L60,19 L26,26Z"/>
+        <polyline fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 3" opacity=".35" points="26,26 60,19 92,14 122,11 152,10 182,8 212,6 244,6"/>
+        <polyline fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 3" opacity=".35" points="26,37 60,33 92,30 122,27 152,22 182,17 212,13 244,12"/>
+        <polyline fill="none" stroke="#3b82f6" stroke-width="2" stroke-linejoin="round" points="26,32 60,26 92,22 122,19 152,16 182,12 212,10 244,9"/>
+        <line x1="92" y1="8" x2="92" y2="100" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3" opacity=".75"/>
+        <text x="95" y="19" font-size="8" fill="rgba(245,158,11,.85)">now</text>
+        <text x="26" y="107" font-size="8" fill="rgba(139,144,160,.6)" text-anchor="middle">−30m</text>
+        <text x="92" y="107" font-size="8" fill="rgba(245,158,11,.85)" text-anchor="middle">now</text>
+        <text x="152" y="107" font-size="8" fill="rgba(139,144,160,.6)" text-anchor="middle">+30m</text>
+        <text x="244" y="107" font-size="8" fill="rgba(139,144,160,.6)" text-anchor="middle">+60m</text>
+        <circle cx="92" cy="22" r="3.5" fill="var(--acc)" stroke="var(--surface)" stroke-width="1.5"/>
+        <text x="200" y="10" font-size="8" fill="rgba(59,130,246,.85)" text-anchor="middle">+60m: 82%</text>
+        <text x="200" y="20" font-size="7" fill="rgba(139,144,160,.55)" text-anchor="middle">CI: 74–91%</text>
+      </svg>
+      <div style="display:flex;justify-content:space-between;margin-top:5px;">
+        <span style="font-size:10px;color:var(--t3)">Now: <span style="color:var(--amb);font-weight:600">62%</span></span>
+        <span style="font-size:10px;color:var(--t3)">+60m: <span style="color:var(--red);font-weight:600">82%</span> <span>(87% conf.)</span></span>
+      </div>
+    </div>
+
+    <!-- Causal breakdown -->
+    <div class="cauw">
+      <div class="slbl">Causal Attribution · +60m surge</div>
+      <div class="car"><div class="can">Warriors game (post-event)</div><div class="cab"><div class="caf" style="width:78%;background:var(--pur)"></div></div><div class="cap" style="color:var(--pur)">78%</div></div>
+      <div class="car"><div class="can">I-80 accident capacity loss</div><div class="cab"><div class="caf" style="width:38%;background:var(--red)"></div></div><div class="cap" style="color:var(--red)">38%</div></div>
+      <div class="car"><div class="can">Evening peak demand</div><div class="cab"><div class="caf" style="width:22%;background:var(--amb)"></div></div><div class="cap" style="color:var(--amb)">22%</div></div>
+      <div class="car"><div class="can">Rain (−12% throughput)</div><div class="cab"><div class="caf" style="width:18%;background:var(--tel)"></div></div><div class="cap" style="color:var(--tel)">18%</div></div>
+      <div class="car"><div class="can">Market St roadwork</div><div class="cab"><div class="caf" style="width:12%;background:var(--acc)"></div></div><div class="cap">12%</div></div>
+      <div class="cf-box"><strong>Counterfactual:</strong> Without the Warriors game, +60m congestion = ~44% (−38pp). Rain alone contributes −7pp on top of baseline.</div>
+    </div>
+
+    <!-- NEXUS Chat -->
+    <div class="chat-p">
+      <div class="slbl">NEXUS Assistant <span style="color:var(--acc);font-size:9px;background:var(--acc-d);padding:1px 5px;border-radius:3px;font-weight:600;margin-left:4px;">Claude-powered</span></div>
+      <div class="chat-msgs" id="chatMsgs">
+        <div class="cm ai"><div class="mf nx">NEXUS</div>Evening briefing: <strong>62% network congestion</strong>, rising to 82% at +60m. Warriors game ends 10:15 PM — post-event surge is primary driver (78% attribution). Rain cutting throughput −12%. Recommend VMS activation on Route 101 at 9:45 PM and extending green phases on 3rd St corridor by 15s starting now.</div>
+        <div class="cm u"><div class="mf op">Operator</div>Route Engine 7 from Station 4 to 3rd &amp; King</div>
+        <div class="cm ai"><div class="mf nx">NEXUS</div><span class="ti2 lo">ETA 3.8 min</span><br/><strong>Route:</strong> Folsom → 2nd → King St. Signal preemption queued at 4 intersections. Avoid I-80 on-ramp (blocked). Alternate via Howard adds 2.1 min.</div>
+      </div>
+      <div class="chips" id="chatChips">
+        <div class="chip">What if the game ends early?</div>
+        <div class="chip">Why is downtown so bad?</div>
+        <div class="chip">Close Market St now?</div>
+        <div class="chip">Best route from SFO to downtown</div>
+        <div class="chip">Rain impact on flow?</div>
+        <div class="chip">Approve all RL signals?</div>
+      </div>
+      <div class="ci-row">
+        <input class="ci" id="chatIn" type="text" placeholder="Ask NEXUS about city traffic…"/>
+        <button class="cs" id="chatBtn">↑</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- VIEW 2: PREDICTION TIMELINE               -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="view" id="v-timeline">
+  <div class="tlh">
+    <h2>Prediction Timeline</h2>
+    <div class="zsel" id="zsel">
+      <div class="zb on">Downtown</div><div class="zb">SoMa</div><div class="zb">Mission</div>
+      <div class="zb">Chase/SoMa</div><div class="zb">Bay Bridge</div><div class="zb">Market St</div>
+    </div>
+    <div class="hsel" id="hsel">
+      <div class="hb on">30m</div><div class="hb">60m</div><div class="hb">120m</div><div class="hb">All Day</div>
+    </div>
+  </div>
+  <div class="tlb">
+
+    <!-- Card 1: Congestion forecast -->
+    <div class="tc">
+      <div class="tch">
+        <div><div class="tct">Congestion forecast</div><div class="tcs">5th & Mission · with uncertainty bands</div></div>
+        <div class="tcb r">82% @ +60m</div>
+      </div>
+      <div class="cc">
+        <svg width="100%" height="100%" viewBox="0 0 320 148">
+          <defs>
+            <linearGradient id="gF" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#3b82f6" stop-opacity=".18"/>
+              <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <line x1="38" y1="10" x2="312" y2="10" stroke="rgba(255,255,255,0.04)" stroke-width=".5"/>
+          <line x1="38" y1="50" x2="312" y2="50" stroke="rgba(255,255,255,0.04)" stroke-width=".5"/>
+          <line x1="38" y1="90" x2="312" y2="90" stroke="rgba(255,255,255,0.04)" stroke-width=".5"/>
+          <line x1="38" y1="130" x2="312" y2="130" stroke="rgba(255,255,255,0.04)" stroke-width=".5"/>
+          <text x="0" y="13" font-size="9" fill="rgba(139,144,160,.6)">100%</text>
+          <text x="2" y="53" font-size="9" fill="rgba(139,144,160,.6)">70%</text>
+          <text x="2" y="93" font-size="9" fill="rgba(139,144,160,.6)">40%</text>
+          <text x="2" y="133" font-size="9" fill="rgba(139,144,160,.6)">10%</text>
+          <!-- Uncertainty bands -->
+          <path fill="#3b82f6" opacity=".07" d="M38,74 L90,68 L132,60 L162,52 L192,44 L222,36 L262,28 L300,24 L300,14 L262,18 L222,24 L192,30 L162,36 L132,42 L90,50 L38,56Z"/>
+          <!-- Area under curve -->
+          <path fill="url(#gF)" d="M38,65 L90,60 L132,52 L162,44 L192,38 L222,30 L262,22 L300,19 L300,130 L38,130Z"/>
+          <!-- Main line -->
+          <polyline fill="none" stroke="#3b82f6" stroke-width="2" stroke-linejoin="round" points="38,65 90,60 132,52 162,44 192,38 222,30 262,22 300,19"/>
+          <!-- Last week -->
+          <polyline fill="none" stroke="rgba(139,144,160,.28)" stroke-width="1.5" stroke-dasharray="5 4" points="38,78 90,74 132,72 162,68 192,64 222,60 262,58 300,55"/>
+          <!-- Now line -->
+          <line x1="132" y1="10" x2="132" y2="130" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3" opacity=".8"/>
+          <text x="135" y="22" font-size="8" fill="rgba(245,158,11,.85)">now</text>
+          <!-- Event marker -->
+          <line x1="248" y1="10" x2="248" y2="130" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="3 3" opacity=".55"/>
+          <text x="251" y="22" font-size="8" fill="rgba(139,92,246,.8)">game end</text>
+          <circle cx="132" cy="52" r="3.5" fill="#3b82f6" stroke="#12151f" stroke-width="1.5"/>
+          <text x="38" y="140" font-size="8" fill="rgba(139,144,160,.6)" text-anchor="middle">−30m</text>
+          <text x="132" y="140" font-size="8" fill="rgba(245,158,11,.85)" text-anchor="middle">now</text>
+          <text x="220" y="140" font-size="8" fill="rgba(139,144,160,.6)" text-anchor="middle">+30m</text>
+          <text x="305" y="140" font-size="8" fill="rgba(139,144,160,.6)" text-anchor="middle">+60m</text>
+        </svg>
+        <div style="position:absolute;bottom:16px;right:4px;font-size:10px;color:var(--t3);display:flex;align-items:center;gap:8px;">
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:2px;background:var(--acc);display:inline-block"></span>NEXUS</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:1px;background:rgba(139,144,160,.35);display:inline-block;border-top:1px dashed rgba(139,144,160,.4)"></span>Last week</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2: Speed distribution -->
+    <div class="tc">
+      <div class="tch">
+        <div><div class="tct">Network speed distribution</div><div class="tcs">All zones · hourly progression</div></div>
+        <div class="tcb a">18.3 avg mph</div>
+      </div>
+      <div class="cc">
+        <svg width="100%" height="100%" viewBox="0 0 320 148">
+          <defs>
+            <linearGradient id="gS" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#f59e0b" stop-opacity=".28"/>
+              <stop offset="100%" stop-color="#f59e0b" stop-opacity=".02"/>
+            </linearGradient>
+          </defs>
+          <line x1="38" y1="10" x2="312" y2="10" stroke="rgba(255,255,255,0.04)" stroke-width=".5"/>
+          <line x1="38" y1="50" x2="312" y2="50" stroke="rgba(255,255,255,0.04)" stroke-width=".5"/>
+          <line x1="38" y1="90" x2="312" y2="90" stroke="rgba(255,255,255,0.04)" stroke-width=".5"/>
+          <line x1="38" y1="130" x2="312" y2="130" stroke="rgba(255,255,255,0.04)" stroke-width=".5"/>
+          <text x="0" y="13" font-size="9" fill="rgba(139,144,160,.6)">45mph</text>
+          <text x="0" y="53" font-size="9" fill="rgba(139,144,160,.6)">30mph</text>
+          <text x="0" y="93" font-size="9" fill="rgba(139,144,160,.6)">15mph</text>
+          <text x="2" y="133" font-size="9" fill="rgba(139,144,160,.6)">0mph</text>
+          <!-- Free flow reference -->
+          <line x1="38" y1="40" x2="312" y2="40" stroke="rgba(20,184,166,.38)" stroke-width="1" stroke-dasharray="5 4"/>
+          <text x="316" y="43" font-size="8" fill="rgba(20,184,166,.7)">35</text>
+          <path fill="url(#gS)" d="M38,75 L90,78 L132,82 L162,88 L192,98 L222,108 L262,112 L300,115 L300,130 L38,130Z"/>
+          <polyline fill="none" stroke="#f59e0b" stroke-width="2" stroke-linejoin="round" points="38,75 90,78 132,82 162,88 192,98 222,108 262,112 300,115"/>
+          <line x1="132" y1="10" x2="132" y2="130" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3" opacity=".75"/>
+          <circle cx="132" cy="82" r="3.5" fill="#f59e0b" stroke="#12151f" stroke-width="1.5"/>
+          <text x="38" y="140" font-size="8" fill="rgba(139,144,160,.6)" text-anchor="middle">8 PM</text>
+          <text x="132" y="140" font-size="8" fill="rgba(245,158,11,.85)" text-anchor="middle">now</text>
+          <text x="222" y="140" font-size="8" fill="rgba(139,144,160,.6)" text-anchor="middle">10 PM</text>
+          <text x="305" y="140" font-size="8" fill="rgba(139,144,160,.6)" text-anchor="middle">midnight</text>
+          <!-- Warriors end annotation -->
+          <line x1="222" y1="10" x2="222" y2="130" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="3 3" opacity=".5"/>
+          <text x="225" y="20" font-size="7" fill="rgba(139,92,246,.7)">game end</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Card 3: Incident Gantt -->
+    <div class="tc">
+      <div class="tch">
+        <div><div class="tct">Incident impact timeline</div><div class="tcs">Capacity loss by active event</div></div>
+        <div class="tcb r">3 active</div>
+      </div>
+      <div class="cc" style="display:flex;flex-direction:column;gap:12px;justify-content:center;padding:0 4px;">
+        <div style="font-size:10px;color:var(--t3);display:flex;justify-content:space-between;padding:0 6px;">
+          <span>8 PM</span><span>9 PM</span><span>10 PM</span><span>11 PM</span><span>12 AM</span>
+        </div>
+        <!-- I-80 Accident -->
+        <div style="padding:0 6px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;align-items:center;">
+            <span style="display:flex;align-items:center;gap:6px;color:var(--t2)"><span style="width:8px;height:8px;background:var(--red);border-radius:50%"></span>I-80 WB Accident</span>
+            <span style="color:var(--t3);font-size:10px;font-family:var(--mono)">−35% cap</span>
+          </div>
+          <div style="height:11px;background:var(--border);border-radius:3px;position:relative;overflow:hidden;">
+            <div style="position:absolute;left:15%;width:35%;height:100%;background:rgba(239,68,68,.48);border-radius:3px;border-left:2px solid rgba(239,68,68,.7);">
+              <div style="position:absolute;right:0;width:3px;height:100%;background:rgba(239,68,68,.4);animation:blink 1.2s infinite;"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Warriors Game -->
+        <div style="padding:0 6px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;align-items:center;">
+            <span style="display:flex;align-items:center;gap:6px;color:var(--t2)"><span style="width:8px;height:8px;background:var(--pur);border-radius:50%"></span>Warriors Game + Surge</span>
+            <span style="color:var(--t3);font-size:10px;font-family:var(--mono)">18,064 cap</span>
+          </div>
+          <div style="height:11px;background:var(--border);border-radius:3px;position:relative;overflow:hidden;">
+            <div style="position:absolute;left:0%;width:55%;height:100%;background:rgba(139,92,246,.28);border-radius:3px 0 0 3px;"></div>
+            <div style="position:absolute;left:55%;width:32%;height:100%;background:rgba(139,92,246,.58);border-left:2px solid rgba(139,92,246,.7);">
+              <div style="position:absolute;right:0;width:3px;height:100%;background:rgba(139,92,246,.4);animation:blink 1.5s infinite;"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Market St Roadwork -->
+        <div style="padding:0 6px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;align-items:center;">
+            <span style="display:flex;align-items:center;gap:6px;color:var(--t2)"><span style="width:8px;height:8px;background:var(--amb);border-radius:50%"></span>Market St Roadwork</span>
+            <span style="color:var(--t3);font-size:10px;font-family:var(--mono)">1 lane</span>
+          </div>
+          <div style="height:11px;background:var(--border);border-radius:3px;position:relative;overflow:hidden;">
+            <div style="position:absolute;left:55%;width:45%;height:100%;background:rgba(245,158,11,.32);border-left:2px solid rgba(245,158,11,.5);"></div>
+          </div>
+        </div>
+        <!-- Combined delay -->
+        <div style="padding:0 6px;">
+          <div style="font-size:10px;color:var(--t3);margin-bottom:4px;">Combined network delay index</div>
+          <div style="height:8px;background:var(--border);border-radius:3px;overflow:hidden;display:flex;">
+            <div style="width:22%;background:rgba(245,158,11,.38);"></div>
+            <div style="width:33%;background:rgba(239,68,68,.4);"></div>
+            <div style="width:35%;background:rgba(239,68,68,.62);animation:blink 2s infinite;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 4: Zone heatmap -->
+    <div class="tc">
+      <div class="tch">
+        <div><div class="tct">Zone congestion heatmap</div><div class="tcs">All 6 zones · 4-hour window</div></div>
+        <div class="tcb a">6 zones</div>
+      </div>
+      <div class="cc">
+        <svg width="100%" height="100%" viewBox="0 0 320 150">
+          <defs>
+            <linearGradient id="h1" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#22c55e" stop-opacity=".7"/><stop offset="30%" stop-color="#f59e0b" stop-opacity=".7"/><stop offset="65%" stop-color="#ef4444" stop-opacity=".82"/><stop offset="100%" stop-color="#ef4444" stop-opacity=".92"/></linearGradient>
+            <linearGradient id="h2" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#f59e0b" stop-opacity=".7"/><stop offset="55%" stop-color="#ef4444" stop-opacity=".82"/><stop offset="100%" stop-color="#ef4444" stop-opacity=".92"/></linearGradient>
+            <linearGradient id="h3" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#14b8a6" stop-opacity=".7"/><stop offset="35%" stop-color="#22c55e" stop-opacity=".7"/><stop offset="65%" stop-color="#f59e0b" stop-opacity=".7"/><stop offset="100%" stop-color="#ef4444" stop-opacity=".82"/></linearGradient>
+            <linearGradient id="h4" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#22c55e" stop-opacity=".65"/><stop offset="55%" stop-color="#14b8a6" stop-opacity=".7"/><stop offset="100%" stop-color="#22c55e" stop-opacity=".65"/></linearGradient>
+            <linearGradient id="h5" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#f59e0b" stop-opacity=".7"/><stop offset="45%" stop-color="#ef4444" stop-opacity=".82"/><stop offset="100%" stop-color="#ef4444" stop-opacity=".92"/></linearGradient>
+            <linearGradient id="h6" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#14b8a6" stop-opacity=".65"/><stop offset="60%" stop-color="#22c55e" stop-opacity=".65"/><stop offset="100%" stop-color="#f59e0b" stop-opacity=".65"/></linearGradient>
+          </defs>
+          <text x="2" y="22" font-size="9" fill="rgba(139,144,160,.75)">Downtown</text>
+          <text x="2" y="47" font-size="9" fill="rgba(139,144,160,.75)">SoMa</text>
+          <text x="2" y="72" font-size="9" fill="rgba(139,144,160,.75)">Mission</text>
+          <text x="2" y="97" font-size="9" fill="rgba(139,144,160,.75)">Chase/SoMa</text>
+          <text x="2" y="122" font-size="9" fill="rgba(139,144,160,.75)">Bay Bridge</text>
+          <text x="2" y="147" font-size="9" fill="rgba(139,144,160,.75)">Market St</text>
+          <rect x="80" y="10" width="232" height="16" fill="url(#h1)" rx="3"/>
+          <rect x="80" y="35" width="232" height="16" fill="url(#h2)" rx="3"/>
+          <rect x="80" y="60" width="232" height="16" fill="url(#h3)" rx="3"/>
+          <rect x="80" y="85" width="232" height="16" fill="url(#h4)" rx="3"/>
+          <rect x="80" y="110" width="232" height="16" fill="url(#h5)" rx="3"/>
+          <rect x="80" y="135" width="232" height="16" fill="url(#h6)" rx="3"/>
+          <line x1="156" y1="8" x2="156" y2="152" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3" opacity=".8"/>
+          <text x="80" y="8" font-size="8" fill="rgba(139,144,160,.5)" text-anchor="middle">8 PM</text>
+          <text x="156" y="8" font-size="8" fill="rgba(245,158,11,.8)" text-anchor="middle">now</text>
+          <text x="234" y="8" font-size="8" fill="rgba(139,144,160,.5)" text-anchor="middle">midnight</text>
+          <text x="312" y="8" font-size="8" fill="rgba(139,144,160,.5)" text-anchor="middle">+4h</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- VIEW 3: SIGNAL CONTROL                     -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="view" id="v-signals">
+  <div class="sigh">
+    <h2>Signal Control</h2>
+    <div style="font-size:11px;color:var(--t3)">RL recommendations active · <span style="color:var(--tel)" id="rec-count">4 pending approval</span></div>
+    <div style="margin-left:auto;display:flex;gap:6px;">
+      <button onclick="approveAll()" style="background:var(--tel);border:none;border-radius:var(--r);padding:5px 12px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;transition:all .13s;" onmouseover="this.style.background='#0d9488'" onmouseout="this.style.background='var(--tel)'">✓ Approve All</button>
+      <button onclick="rejectAll()" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:5px 12px;color:var(--t2);font-size:11px;cursor:pointer;transition:all .13s;" onmouseover="this.style.color='var(--t1)'" onmouseout="this.style.color='var(--t2)'">✕ Reject All</button>
+    </div>
+  </div>
+  <div class="sigb">
+    <div class="sgw"><div class="sg" id="sigGrid"></div></div>
+    <div class="sd" id="sigDetail"><div style="color:var(--t3);font-size:12px;margin-top:60px;text-align:center;line-height:1.7;">Select an intersection<br/>to view &amp; edit timing</div></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- VIEW 4: SCENARIO SANDBOX                   -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="view" id="v-sandbox">
+  <div class="sbh">
+    <h2>Scenario Sandbox</h2>
+    <div style="font-size:11px;color:var(--t3)">Modify conditions · run forward simulation · compare vs baseline</div>
+    <div style="margin-left:auto;font-size:11px;color:var(--t3)" id="simStat">No simulation running</div>
+  </div>
+  <div class="sbb">
+    <div class="sbc">
+      <div>
+        <div class="cgl">Preset Scenarios</div>
+        <div class="scc on" data-scenario="baseline" onclick="pickScenario(this)"><span class="sci">📊</span>Current baseline</div>
+        <div class="scc" data-scenario="close-market" onclick="pickScenario(this)"><span class="sci">🚧</span>Close Market St</div>
+        <div class="scc" data-scenario="game-early" onclick="pickScenario(this)"><span class="sci">🏀</span>Game ends 9:30 PM</div>
+        <div class="scc" data-scenario="accident-clear" onclick="pickScenario(this)"><span class="sci">🚗</span>I-80 accident cleared</div>
+        <div class="scc" data-scenario="rain-stops" onclick="pickScenario(this)"><span class="sci">🌤</span>Rain stops now</div>
+        <div class="scc" data-scenario="rl-approved" onclick="pickScenario(this)"><span class="sci">🟢</span>RL signals approved</div>
+      </div>
+      <div>
+        <div class="cgl">Manual Parameters</div>
+        <div class="sw"><div class="sl2"><span>Rain intensity</span><span class="sv" id="vRain">0.3 in/hr</span></div><input type="range" min="0" max="20" value="3" oninput="document.getElementById('vRain').textContent=(this.value/10).toFixed(1)+' in/hr'"/></div>
+        <div class="sw"><div class="sl2"><span>Event attendance</span><span class="sv" id="vAtt">18,064</span></div><input type="range" min="0" max="20" value="18" oninput="document.getElementById('vAtt').textContent=(this.value*1000).toLocaleString()"/></div>
+        <div class="sw"><div class="sl2"><span>I-80 capacity</span><span class="sv" id="vCap">65%</span></div><input type="range" min="0" max="100" value="65" oninput="document.getElementById('vCap').textContent=this.value+'%'"/></div>
+        <div class="sw"><div class="sl2"><span>Simulation horizon</span><span class="sv" id="vHor">120 min</span></div><input type="range" min="15" max="240" step="15" value="120" oninput="document.getElementById('vHor').textContent=this.value+' min'"/></div>
+      </div>
+      <div>
+        <div class="cgl">Display Options</div>
+        <div class="tg-row" onclick="toggleTg(this)"><span>Compare vs. baseline</span><div class="tg on"><div class="tgk"></div></div></div>
+        <div class="tg-row" onclick="toggleTg(this)"><span>Show confidence bands</span><div class="tg on"><div class="tgk"></div></div></div>
+        <div class="tg-row" onclick="toggleTg(this)"><span>Animate traffic flow</span><div class="tg on"><div class="tgk"></div></div></div>
+      </div>
+      <button class="run-btn" id="runBtn" onclick="runSim()">▶ Run Simulation</button>
+      <div class="sim-res" id="simRes">
+        <div class="slbl" style="margin-bottom:8px;">Simulation Results</div>
+        <div class="sr2"><span class="srn">Avg congestion +60m</span><span class="srd" id="rCong">—</span></div>
+        <div class="sr2"><span class="srn">Avg network speed</span><span class="srd" id="rSpeed">—</span></div>
+        <div class="sr2"><span class="srn">Vehicle-hrs delay saved</span><span class="srd" id="rDelay">—</span></div>
+        <div class="sr2"><span class="srn">Most affected zone</span><span class="srd n" id="rZone">—</span></div>
+        <div class="sr2"><span class="srn">Emergency ETA change</span><span class="srd" id="rETA">—</span></div>
+      </div>
+    </div>
+
+    <!-- Sandbox map -->
+    <div class="sbm">
+      <svg class="csvc" viewBox="0 0 620 560" preserveAspectRatio="xMidYMid slice" id="sbSvg">
+        <rect width="620" height="560" fill="#090c10"/>
+        <path d="M0 440 Q100 400 120 440 Q170 485 220 472 Q270 515 320 535 L0 560Z" fill="#0c1b2a" opacity=".85"/>
+        <rect x="18" y="118" width="52" height="62" fill="#0f1320" rx="2"/><rect x="88" y="118" width="64" height="44" fill="#0f1320" rx="2"/>
+        <rect x="168" y="118" width="72" height="64" fill="#0f1320" rx="2"/><rect x="262" y="118" width="62" height="54" fill="#0f1320" rx="2"/>
+        <rect x="352" y="118" width="62" height="54" fill="#0f1320" rx="2"/><rect x="448" y="118" width="64" height="54" fill="#0f1320" rx="2"/>
+        <line x1="0" y1="102" x2="620" y2="102" stroke="#18203a" stroke-width="8"/>
+        <line x1="0" y1="198" x2="620" y2="198" stroke="#18203a" stroke-width="5"/>
+        <line x1="0" y1="302" x2="620" y2="302" stroke="#18203a" stroke-width="8"/>
+        <line x1="82" y1="0" x2="82" y2="560" stroke="#18203a" stroke-width="5"/>
+        <line x1="168" y1="0" x2="168" y2="560" stroke="#18203a" stroke-width="8"/>
+        <line x1="258" y1="0" x2="258" y2="560" stroke="#18203a" stroke-width="5"/>
+        <line x1="348" y1="0" x2="348" y2="560" stroke="#18203a" stroke-width="8"/>
+        <line x1="442" y1="0" x2="442" y2="560" stroke="#18203a" stroke-width="5"/>
+        <line x1="0" y1="366" x2="432" y2="58" stroke="#18203a" stroke-width="10" id="mktRd"/>
+        <!-- Congestion defaults -->
+        <line x1="0" y1="102" x2="168" y2="102" stroke="#ef4444" stroke-width="5" opacity=".75" class="cl"/>
+        <line x1="168" y1="198" x2="348" y2="198" stroke="#ef4444" stroke-width="5" opacity=".68" class="cl"/>
+        <line x1="0" y1="366" x2="215" y2="196" stroke="#ef4444" stroke-width="9" opacity=".75" id="mktCng"/>
+        <line x1="168" y1="102" x2="442" y2="102" stroke="#f59e0b" stroke-width="5" opacity=".62" class="cl"/>
+        <line x1="0" y1="302" x2="348" y2="302" stroke="#f59e0b" stroke-width="5" opacity=".55" class="cl"/>
+        <line x1="442" y1="102" x2="620" y2="102" stroke="#14b8a6" stroke-width="5" opacity=".52" class="cl"/>
+        <!-- Modified zone indicator -->
+        <circle cx="310" cy="280" r="0" fill="none" stroke="#3b82f6" stroke-width="2" stroke-dasharray="6 4" opacity="0" id="modZone">
+          <animateTransform attributeName="transform" type="rotate" from="0 310 280" to="360 310 280" dur="6s" repeatCount="indefinite"/>
+        </circle>
+        <text x="310" y="545" text-anchor="middle" font-size="11" fill="rgba(139,144,160,.5)" id="sbLbl">Baseline: current conditions</text>
+        <text x="310" y="93" text-anchor="middle" font-size="9" fill="rgba(255,255,255,.2)">I-80</text>
+        <text x="178" y="162" font-size="9" fill="rgba(255,255,255,.2)" transform="rotate(-34,178,162)">Market St</text>
+        <!-- Sim result overlay -->
+        <g id="simOverlay" opacity="0">
+          <rect x="180" y="220" width="280" height="80" rx="8" fill="rgba(10,13,20,.92)" stroke="rgba(59,130,246,.3)" stroke-width="1"/>
+          <text x="320" y="248" text-anchor="middle" font-size="11" fill="rgba(139,144,160,.8)" id="simOvTitle">Simulation complete</text>
+          <text x="320" y="272" text-anchor="middle" font-size="18" font-weight="700" fill="#3b82f6" id="simOvVal">—</text>
+          <text x="320" y="290" text-anchor="middle" font-size="10" fill="rgba(139,144,160,.6)" id="simOvSub">vs baseline</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- VIEW 5: ANALYTICS                          -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="view" id="v-analytics">
+  <div class="alh">
+    <h2>Analytics</h2>
+    <div style="font-size:11px;color:var(--t3)">Week of Aug 4–10, 2026</div>
+    <div style="margin-left:auto;display:flex;gap:4px;" id="alPeriod">
+      <div class="zb on">Daily</div><div class="zb">Weekly</div><div class="zb">Monthly</div>
+    </div>
+  </div>
+  <div class="alb">
+
+    <!-- KPIs -->
+    <div class="ac">
+      <div class="ach"><div><div class="act">Network performance</div><div class="acs">Today vs. 7-day avg</div></div></div>
+      <div class="acv" style="color:var(--amb)">62%<span class="acd r">+8pp</span></div>
+      <div style="font-size:10px;color:var(--t3);margin-top:2px;margin-bottom:10px;">Avg congestion today</div>
+      <div class="kg">
+        <div class="ki"><div class="kv" style="color:var(--amb)">18.3</div><div class="kl">Avg speed (mph)</div></div>
+        <div class="ki"><div class="kv" style="color:var(--red)">+34%</div><div class="kl">Delay vs baseline</div></div>
+        <div class="ki"><div class="kv" style="color:var(--grn)">94%</div><div class="kl">Incident clearance</div></div>
+        <div class="ki"><div class="kv" style="color:var(--tel)">87%</div><div class="kl">Model confidence</div></div>
+      </div>
+    </div>
+
+    <!-- Weekly trend (spans 2 cols) -->
+    <div class="ac" style="grid-column:span 2;">
+      <div class="ach">
+        <div><div class="act">Weekly congestion trend</div><div class="acs">Downtown zone · hourly average</div></div>
+        <div style="font-size:10px;color:var(--t3)">Mon → Sun</div>
+      </div>
+      <div class="acp">
+        <svg width="100%" height="100%" viewBox="0 0 530 110">
+          <defs>
+            <linearGradient id="gW" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#3b82f6" stop-opacity=".22"/>
+              <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <line x1="0" y1="10" x2="530" y2="10" stroke="rgba(255,255,255,.04)" stroke-width=".5"/>
+          <line x1="0" y1="40" x2="530" y2="40" stroke="rgba(255,255,255,.04)" stroke-width=".5"/>
+          <line x1="0" y1="70" x2="530" y2="70" stroke="rgba(255,255,255,.04)" stroke-width=".5"/>
+          <line x1="0" y1="100" x2="530" y2="100" stroke="rgba(255,255,255,.04)" stroke-width=".5"/>
+          <text x="2" y="12" font-size="8" fill="rgba(139,144,160,.5)">100%</text>
+          <text x="2" y="42" font-size="8" fill="rgba(139,144,160,.5)">70%</text>
+          <text x="2" y="72" font-size="8" fill="rgba(139,144,160,.5)">40%</text>
+          <text x="2" y="102" font-size="8" fill="rgba(139,144,160,.5)">10%</text>
+          <path fill="url(#gW)" d="M22,72 L96,60 L170,50 L244,46 L318,40 L392,58 L466,36 L514,31 L514,100 L22,100Z"/>
+          <polyline fill="none" stroke="#3b82f6" stroke-width="2" stroke-linejoin="round" points="22,72 96,60 170,50 244,46 318,40 392,58 466,36 514,31"/>
+          <circle cx="22" cy="72" r="3" fill="#3b82f6" stroke="#12151f" stroke-width="1.5"/><text x="22" y="108" font-size="8" fill="rgba(139,144,160,.5)" text-anchor="middle">Mon</text>
+          <circle cx="96" cy="60" r="3" fill="#3b82f6" stroke="#12151f" stroke-width="1.5"/><text x="96" y="108" font-size="8" fill="rgba(139,144,160,.5)" text-anchor="middle">Tue</text>
+          <circle cx="170" cy="50" r="3" fill="#3b82f6" stroke="#12151f" stroke-width="1.5"/><text x="170" y="108" font-size="8" fill="rgba(139,144,160,.5)" text-anchor="middle">Wed</text>
+          <circle cx="244" cy="46" r="3" fill="#3b82f6" stroke="#12151f" stroke-width="1.5"/><text x="244" y="108" font-size="8" fill="rgba(139,144,160,.5)" text-anchor="middle">Thu</text>
+          <circle cx="318" cy="40" r="3" fill="#3b82f6" stroke="#12151f" stroke-width="1.5"/><text x="318" y="108" font-size="8" fill="rgba(139,144,160,.5)" text-anchor="middle">Fri</text>
+          <circle cx="392" cy="58" r="3" fill="#3b82f6" stroke="#12151f" stroke-width="1.5"/><text x="392" y="108" font-size="8" fill="rgba(139,144,160,.5)" text-anchor="middle">Sat</text>
+          <circle cx="466" cy="36" r="5" fill="#f59e0b" stroke="#12151f" stroke-width="1.5"/>
+          <line x1="466" y1="10" x2="466" y2="100" stroke="rgba(245,158,11,.2)" stroke-width="1" stroke-dasharray="4 3"/>
+          <text x="466" y="28" font-size="8" fill="rgba(245,158,11,.7)" text-anchor="middle">game night</text>
+          <text x="466" y="108" font-size="8" fill="rgba(245,158,11,.7)" text-anchor="middle">Sun</text>
+          <circle cx="514" cy="31" r="3" fill="#3b82f6" stroke="#12151f" stroke-width="1.5" opacity=".5"/><text x="514" y="108" font-size="8" fill="rgba(139,144,160,.35)" text-anchor="middle">Mon</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Incidents -->
+    <div class="ac">
+      <div class="ach"><div><div class="act">Incidents this week</div><div class="acs">Type breakdown + clearance</div></div></div>
+      <div class="acp" style="display:flex;flex-direction:column;gap:9px;justify-content:center;">
+        <div><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span style="color:var(--t2)">Accidents</span><span style="font-family:var(--mono)">14 · avg 28 min</span></div><div class="cbar"><div class="cbf" style="width:70%;background:var(--red)"></div></div></div>
+        <div><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span style="color:var(--t2)">Breakdowns</span><span style="font-family:var(--mono)">9 · avg 19 min</span></div><div class="cbar"><div class="cbf" style="width:45%;background:var(--amb)"></div></div></div>
+        <div><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span style="color:var(--t2)">Roadwork</span><span style="font-family:var(--mono)">6 · planned</span></div><div class="cbar"><div class="cbf" style="width:30%;background:var(--pur)"></div></div></div>
+        <div><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span style="color:var(--t2)">Events</span><span style="font-family:var(--mono)">3 · avg 90 min</span></div><div class="cbar"><div class="cbf" style="width:15%;background:var(--tel)"></div></div></div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px;">32 total · <span style="color:var(--grn)">94% cleared on time</span></div>
+      </div>
+    </div>
+
+    <!-- Model accuracy -->
+    <div class="ac">
+      <div class="ach"><div><div class="act">NEXUS-ST accuracy</div><div class="acs">MAPE by prediction horizon</div></div></div>
+      <div class="acp">
+        <svg width="100%" height="100%" viewBox="0 0 210 110">
+          <text x="10" y="105" font-size="9" fill="rgba(139,144,160,.7)" text-anchor="middle">15m</text>
+          <text x="60" y="105" font-size="9" fill="rgba(139,144,160,.7)" text-anchor="middle">30m</text>
+          <text x="110" y="105" font-size="9" fill="rgba(139,144,160,.7)" text-anchor="middle">60m</text>
+          <text x="160" y="105" font-size="9" fill="rgba(139,144,160,.7)" text-anchor="middle">120m</text>
+          <rect x="0" y="28" width="20" height="72" fill="rgba(34,197,94,.22)" rx="3" stroke="rgba(34,197,94,.4)" stroke-width="1"/>
+          <text x="10" y="23" font-size="8" fill="var(--grn)" text-anchor="middle">5.2%</text>
+          <rect x="50" y="40" width="20" height="60" fill="rgba(34,197,94,.18)" rx="3" stroke="rgba(34,197,94,.35)" stroke-width="1"/>
+          <text x="60" y="35" font-size="8" fill="var(--grn)" text-anchor="middle">7.8%</text>
+          <rect x="100" y="56" width="20" height="44" fill="rgba(245,158,11,.18)" rx="3" stroke="rgba(245,158,11,.35)" stroke-width="1"/>
+          <text x="110" y="51" font-size="8" fill="var(--amb)" text-anchor="middle">11.4%</text>
+          <rect x="150" y="70" width="20" height="30" fill="rgba(239,68,68,.14)" rx="3" stroke="rgba(239,68,68,.3)" stroke-width="1"/>
+          <text x="160" y="65" font-size="8" fill="var(--red)" text-anchor="middle">15.9%</text>
+          <line x1="0" y1="56" x2="210" y2="56" stroke="rgba(59,130,246,.3)" stroke-width="1" stroke-dasharray="4 3"/>
+          <text x="205" y="54" font-size="7" fill="rgba(59,130,246,.65)" text-anchor="end">target</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- RL impact -->
+    <div class="ac">
+      <div class="ach"><div><div class="act">RL signal impact</div><div class="acs">A/B vs. fixed timing · this week</div></div></div>
+      <div class="acp" style="display:flex;flex-direction:column;gap:0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:11px;color:var(--t2)">Avg delay reduction</span>
+          <span style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--grn)">−23%</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:11px;color:var(--t2)">Throughput increase</span>
+          <span style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--tel)">+18%</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:11px;color:var(--t2)">Emergency ETA saved</span>
+          <span style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--acc)">1.4 min</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;">
+          <span style="font-size:11px;color:var(--t2)">Signals optimized</span>
+          <span style="font-size:18px;font-weight:700;font-family:var(--mono);">847</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Status footer -->
+<div id="statusbar" style="position:fixed;bottom:0;left:0;right:0;height:22px;background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:16px;font-size:10px;color:var(--t3);z-index:100;pointer-events:none;">
+  <span style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:var(--grn);animation:blink 2s infinite;display:inline-block"></span>NEXUS-ST inference · <span id="sb-latency">148ms</span></span>
+  <span>Kafka lag: <span id="sb-lag">12ms</span></span>
+  <span>Graph nodes: 4,218 · Edges: 11,042</span>
+  <span>GATv2 · 3-hop · 8 heads · MAPPO RL</span>
+  <span style="margin-left:auto">Keys: 1–5 switch tabs · / focus chat · hover tab for hint</span>
+</div>
+
+<script>
+'use strict';
+
+// ── TOUR ──
+function closeTour(){
+  const t=document.getElementById('tour');
+  t.style.opacity='0';t.style.transform='scale(.96)';
+  t.style.transition='all .3s';
+  setTimeout(()=>t.remove(),320);
+}
+
+// ── CLOCK ──
+function tick(){
+  const d=new Date();
+  const s=d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:'America/Los_Angeles'});
+  document.getElementById('clock').textContent=s+' PST';
+}
+tick();setInterval(tick,1000);
+
+// ── NAV ──
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+    t.classList.add('on');
+    const v=document.getElementById('v-'+t.dataset.v);
+    if(v)v.classList.add('on');
+  });
+});
+
+// ── MAP BUTTONS ──
+document.querySelectorAll('.mbt').forEach(b=>b.addEventListener('click',function(){this.classList.toggle('on');}));
+
+// ── HORIZON/ZONE TABS ──
+document.querySelectorAll('.hts').forEach(g=>{
+  g.querySelectorAll('.ht').forEach(t=>{
+    t.addEventListener('click',()=>{g.querySelectorAll('.ht').forEach(x=>x.classList.remove('on'));t.classList.add('on');});
+  });
+});
+document.querySelectorAll('#zsel .zb').forEach(b=>{
+  b.addEventListener('click',()=>{document.querySelectorAll('#zsel .zb').forEach(x=>x.classList.remove('on'));b.classList.add('on');});
+});
+document.querySelectorAll('#hsel .hb').forEach(b=>{
+  b.addEventListener('click',()=>{document.querySelectorAll('#hsel .hb').forEach(x=>x.classList.remove('on'));b.classList.add('on');});
+});
+document.querySelectorAll('#alPeriod .zb').forEach(b=>{
+  b.addEventListener('click',()=>{document.querySelectorAll('#alPeriod .zb').forEach(x=>x.classList.remove('on'));b.classList.add('on');});
+});
+
+// ── LIVE DATA SIMULATION — smooth Gaussian random walk ──
+const liveState={
+  cong:62, speed:18.3, veh:142810, sensors:847,
+  incETA:22, incDecayStart:Date.now()
+};
+// Smooth random walk: nudge toward target with noise
+function nudge(v,target,noise,min,max){
+  const pull=(target-v)*0.04; // gentle mean reversion
+  const jitter=(Math.random()-.5)*noise;
+  return Math.max(min,Math.min(max,v+pull+jitter));
+}
+function updateLive(){
+  // Smooth walk on each metric
+  liveState.cong   = nudge(liveState.cong,   62,   0.6,  55, 70);
+  liveState.speed  = nudge(liveState.speed,  18.3, 0.18, 15, 22);
+  liveState.veh    = nudge(liveState.veh, 142810,  80,   142000, 143600);
+  liveState.sensors= nudge(liveState.sensors, 847,  0.4, 843, 851);
+
+  // Incident ETA: counts down in real-ish time (1 sim-min per 8 real-sec)
+  const elapsed=(Date.now()-liveState.incDecayStart)/1000;
+  const rawETA=Math.max(0,22-(elapsed/8));
+  liveState.incETA=rawETA;
+
+  // Update DOM
+  const set=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val;};
+  set('live-speed',   liveState.speed.toFixed(1)+' mph');
+  set('live-cong',    Math.round(liveState.cong)+'%');
+  set('live-veh',     Math.round(liveState.veh).toLocaleString());
+  set('live-sensors', Math.round(liveState.sensors)+' / 851');
+  set('map-cong',     Math.round(liveState.cong)+'%');
+  set('map-speed',    liveState.speed.toFixed(1)+' mph');
+  set('incident-eta', rawETA<1?'<1':Math.round(rawETA)+'');
+
+  // Congestion bar
+  const cb=document.getElementById('cbar-speed');
+  if(cb) cb.style.width=liveState.cong+'%';
+
+  // Sensor count in topbar
+  const sc=document.getElementById('sensor-count');
+  if(sc) sc.textContent=Math.round(liveState.sensors)+' sensors active';
+
+  // Map stat overlay values
+  const mc=document.getElementById('map-cong');
+  if(mc){
+    const v=Math.round(liveState.cong);
+    mc.textContent=v+'%';
+    mc.style.color=v>70?'var(--red)':v>55?'var(--amb)':'var(--grn)';
+  }
+}
+setInterval(updateLive,1800);
+
+// ── SIGNAL GRID ──
+const signals=[
+  {id:'s1',name:'Mission @ 16th',zone:'Mission',col:'g',g:42,y:5,r:38,q:12,rec:'+12s green',hasRec:true},
+  {id:'s2',name:'Van Ness @ Market',zone:'Downtown',col:'a',g:55,y:5,r:45,q:28,rec:'−8s red',hasRec:true},
+  {id:'s3',name:'3rd St @ King',zone:'SoMa',col:'r',g:28,y:5,r:62,q:35,rec:'+20s green',hasRec:true},
+  {id:'s4',name:'Folsom @ 1st',zone:'SoMa',col:'g',g:38,y:5,r:42,q:8,rec:'Optimal',hasRec:false},
+  {id:'s5',name:'Howard @ 4th',zone:'SoMa',col:'g',g:45,y:5,r:40,q:15,rec:'+8s green',hasRec:true},
+  {id:'s6',name:'Market @ 8th',zone:'Downtown',col:'a',g:50,y:5,r:48,q:22,rec:'',hasRec:false},
+  {id:'s7',name:'Brannan @ 3rd',zone:'SoMa',col:'r',g:30,y:5,r:58,q:18,rec:'',hasRec:false},
+  {id:'s8',name:'5th @ Mission',zone:'Downtown',col:'g',g:44,y:5,r:36,q:10,rec:'',hasRec:false},
+  {id:'s9',name:'Oak @ Laguna',zone:'Hayes',col:'g',g:40,y:5,r:44,q:5,rec:'',hasRec:false},
+  {id:'s10',name:'Cesar Chavez @ S Van Ness',zone:'Mission',col:'a',g:36,y:5,r:52,q:20,rec:'',hasRec:false},
+  {id:'s11',name:'16th @ Potrero',zone:'Mission',col:'g',g:48,y:5,r:38,q:7,rec:'',hasRec:false},
+  {id:'s12',name:'Bryant @ 7th',zone:'SoMa',col:'r',g:26,y:5,r:64,q:30,rec:'',hasRec:false},
+];
+function buildGrid(){
+  const g=document.getElementById('sigGrid');
+  g.innerHTML=signals.map(s=>{
+    const tot=s.g+s.y+s.r;
+    const gw=Math.round(s.g/tot*100),yw=Math.round(s.y/tot*100),rw=100-gw-yw;
+    return `<div class="sc${s.hasRec?' rec':''}" id="card-${s.id}" onclick="showSig('${s.id}')">
+      ${s.hasRec?`<div class="scrc">${s.rec}</div>`:''}
+      <div class="scn">${s.name}</div>
+      <div class="scz">${s.zone}</div>
+      <div class="scp">
+        <div class="pb pb-g" style="width:${gw}%">G</div>
+        <div class="pb pb-y" style="min-width:${Math.max(yw,7)}%">Y</div>
+        <div class="pb pb-r" style="width:${rw}%">R</div>
+      </div>
+      <div class="scq"><span>Queue: ${s.q} veh</span><span style="color:var(--${s.col==='g'?'grn':s.col==='a'?'amb':'red'})">${s.col.toUpperCase()}</span></div>
+    </div>`;
+  }).join('');
+  const recs=signals.filter(x=>x.hasRec).length;
+  document.getElementById('rec-count').textContent=recs>0?recs+' pending approval':'All applied';
+  document.getElementById('nbadge').textContent=recs;
+  document.getElementById('nbadge').style.display=recs>0?'inline-block':'none';
+}
+buildGrid();
+
+function showSig(id){
+  const s=signals.find(x=>x.id===id);
+  if(!s)return;
+  document.querySelectorAll('.sc').forEach(c=>c.classList.remove('sel'));
+  const el=document.getElementById('card-'+id);
+  if(el)el.classList.add('sel');
+  const qData=Array.from({length:12},(_,i)=>Math.max(2,s.q-8+i+Math.random()*6|0));
+  const maxQ=Math.max(...qData);
+  const pts=qData.map((v,i)=>`${i*(224/11)},${78-v/maxQ*64}`).join(' ');
+  document.getElementById('sigDetail').innerHTML=`
+    <div class="sd-title">${s.name}</div>
+    <div class="sd-sub">${s.zone} · ID: ${s.id.toUpperCase()}</div>
+    ${s.hasRec?`<div><div class="dl">RL Recommendation</div><div class="rec-box">${s.rec} · Expected queue reduction: ~23%</div><button class="ab app" onclick="applyRec('${s.id}')" style="margin-top:6px">✓ Approve RL Recommendation</button></div>`:''}
+    <div><div class="dl">Signal Timing</div>
+    <div class="te">
+      <div class="tr"><div class="tpl" style="background:var(--grn)"></div><span class="tpn">Green</span><input class="ti" type="number" value="${s.g}" id="ig"/><span class="tu">sec</span></div>
+      <div class="tr"><div class="tpl" style="background:var(--amb)"></div><span class="tpn">Yellow</span><input class="ti" type="number" value="${s.y}" id="iy"/><span class="tu">sec</span></div>
+      <div class="tr"><div class="tpl" style="background:var(--red)"></div><span class="tpn">Red</span><input class="ti" type="number" value="${s.r}" id="ir"/><span class="tu">sec</span></div>
+    </div>
+    <button class="ab pri" onclick="applyManual('${s.id}')" style="margin-top:8px">Apply Manual Timing</button></div>
+    <div><div class="dl">Queue · last 15 min</div>
+    <svg width="100%" height="54" viewBox="0 0 228 54">
+      <polyline fill="none" stroke="rgba(59,130,246,.45)" stroke-width="1.5" points="${pts}"/>
+      <circle cx="${11*(224/11)}" cy="${78-qData[11]/maxQ*64}" r="3" fill="var(--acc)"/>
+    </svg>
+    <div style="font-size:10px;color:var(--t3)">Current: ${s.q} vehicles</div></div>
+    <div><div class="dl">Phase Diagram</div>
+    <div style="height:18px;display:flex;border-radius:4px;overflow:hidden;">
+      <div style="flex:${s.g};background:rgba(34,197,94,.22);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--grn);">G ${s.g}s</div>
+      <div style="flex:${s.y};background:rgba(245,158,11,.22);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--amb);">Y</div>
+      <div style="flex:${s.r};background:rgba(239,68,68,.22);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--red);">R ${s.r}s</div>
+    </div></div>`;
+}
+function applyRec(id){
+  const s=signals.find(x=>x.id===id);
+  if(s){s.hasRec=false;buildGrid();}
+  showToast('RL recommendation applied — '+id.toUpperCase(),'ok');
+  document.getElementById('sigDetail').innerHTML='<div style="color:var(--grn);font-size:12px;margin-top:60px;text-align:center;">✓ Recommendation applied</div>';
+}
+function applyManual(id){showToast('Manual timing applied','ok');}
+function approveAll(){
+  signals.forEach(s=>s.hasRec=false);
+  buildGrid();
+  showToast('All RL recommendations approved','ok');
+  document.getElementById('sigDetail').innerHTML='<div style="color:var(--grn);font-size:12px;margin-top:60px;text-align:center;">✓ All recommendations applied</div>';
+}
+function rejectAll(){
+  signals.forEach(s=>s.hasRec=false);
+  buildGrid();
+  showToast('Recommendations cleared');
+}
+
+// ── SANDBOX ──
+const simData={
+  'baseline':   {cong:'62% (no change)',speed:'18.3 mph',delay:'—',zone:'City-wide',eta:'No change',val:'62%',sub:'no change vs baseline'},
+  'close-market':{cong:'71% (+9pp)',speed:'14.1 mph',delay:'+12,400 veh·hrs',zone:'Market / SoMa',eta:'+0.9 min',val:'+9pp',sub:'congestion increase'},
+  'game-early': {cong:'88% (+26pp)',speed:'10.2 mph',delay:'+34,000 veh·hrs',zone:'Chase Center area',eta:'+2.4 min',val:'+26pp',sub:'congestion surge'},
+  'accident-clear':{cong:'51% (−11pp)',speed:'22.4 mph',delay:'−18,200 veh·hrs',zone:'SoMa / I-80',eta:'−1.1 min',val:'−11pp',sub:'congestion reduction'},
+  'rain-stops': {cong:'55% (−7pp)',speed:'20.8 mph',delay:'−9,600 veh·hrs',zone:'City-wide',eta:'−0.6 min',val:'−7pp',sub:'congestion reduction'},
+  'rl-approved':{cong:'48% (−14pp)',speed:'24.1 mph',delay:'−21,000 veh·hrs',zone:'All zones',eta:'−1.4 min',val:'−14pp',sub:'congestion reduction'},
+};
+let currentSc='baseline';
+function pickScenario(el){
+  document.querySelectorAll('.scc').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  currentSc=el.dataset.scenario;
+}
+function toggleTg(el){const t=el.querySelector('.tg');t.classList.toggle('on');}
+function runSim(){
+  const btn=document.getElementById('runBtn');
+  btn.disabled=true;btn.textContent='⏳ Simulating…';
+  document.getElementById('simStat').textContent='Running simulation…';
+  document.getElementById('simStat').style.color='var(--amb)';
+  setTimeout(()=>{
+    const r=simData[currentSc]||simData['baseline'];
+    btn.disabled=false;btn.textContent='▶ Run Simulation';
+    document.getElementById('simStat').textContent='Complete · '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('simStat').style.color='var(--grn)';
+    const res=document.getElementById('simRes');
+    res.style.display='block';
+    const setR=(id,val,cls)=>{const e=document.getElementById(id);e.textContent=val;e.className='srd '+(cls||'n');};
+    const isPos=s=>s.startsWith('+');
+    const isNeg=s=>s.startsWith('−')||s.startsWith('-');
+    setR('rCong',r.cong, isNeg(r.cong)?'neg':isPos(r.cong)?'pos':'n');
+    setR('rSpeed',r.speed,'n');
+    setR('rDelay',r.delay, isNeg(r.delay)?'neg':isPos(r.delay)?'pos':'n');
+    setR('rZone',r.zone,'n');
+    setR('rETA',r.eta, isNeg(r.eta)?'neg':isPos(r.eta)?'pos':'n');
+    // update map overlay
+    const ov=document.getElementById('simOverlay');
+    ov.style.opacity='1';ov.style.transition='opacity .4s';
+    document.getElementById('simOvTitle').textContent='Simulation: '+el2text(currentSc);
+    document.getElementById('simOvVal').textContent=r.val;
+    document.getElementById('simOvSub').textContent=r.sub;
+    document.getElementById('sbLbl').textContent='Scenario: '+el2text(currentSc);
+    const mz=document.getElementById('modZone');
+    mz.setAttribute('r','60');mz.setAttribute('opacity','.6');
+    showToast('Simulation complete','ok');
+  },1800);
+}
+function el2text(k){return {'baseline':'Current Baseline','close-market':'Close Market St','game-early':'Game Ends Early','accident-clear':'I-80 Clear','rain-stops':'Rain Stops','rl-approved':'RL Signals On'}[k]||k;}
+
+// ── TOAST ──
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast show'+(type?' '+type:'');
+  clearTimeout(t._tid);t._tid=setTimeout(()=>t.className='toast',2800);
+}
+
+// ── CHAT ──
+const SYS=`You are NEXUS, a real-time AI traffic intelligence assistant for the City of San Francisco, embedded in the NEXUS platform — a research-grade system using Graph Neural Networks (NEXUS-ST), Multi-Agent RL signal optimization (MAPPO), Causal AI (Structural Causal Models), and Claude for the language interface.
+
+CURRENT CITY STATE (live):
+- Time: Evening ~9:30 PM PST, Tuesday
+- Network congestion: 62% (HEAVY) — rising to predicted 82% at +60m
+- Average network speed: 18.3 mph (baseline: 27 mph)
+- Vehicles tracked: 142,810
+- Sensors active: 847 / 851
+- Weather: Rain 0.3 in/hr, 52°F — causing −12% throughput reduction on wet arterials
+- Delay vs baseline: +34%
+- Model forecast confidence: 87%
+
+ACTIVE INCIDENTS:
+1. ACCIDENT (HIGH): I-80 WB @ Bay Bridge — 2 lanes blocked, est. 22 min clearance, −35% capacity. Cascade impact: 3-mile backup, diverting ~2,400 veh/hr to surface streets.
+2. EVENT (PLANNED): Chase Center — Warriors vs Lakers. Game ends 10:15 PM. 18,064 capacity. Post-event surge begins ~10:20 PM, peaks 10:45–11:00 PM. 78% causal attribution to predicted +60m surge.
+3. ROADWORK (SCHEDULED): Market St @ 5th — night maintenance 10 PM–5 AM. 1 lane blocked westbound. Impact: +8 min on 101 corridor.
+
+NEXUS-ST CAUSAL ATTRIBUTION (+60m surge at 5th & Mission):
+- Warriors game post-event: 78%
+- I-80 accident capacity loss: 38%
+- Evening peak demand: 22%
+- Rain throughput reduction: 18%
+- Market St roadwork: 12%
+Counterfactual: Without game → 44% congestion (−38pp)
+
+PENDING RL SIGNAL RECOMMENDATIONS (4):
+- Mission @ 16th: +12s green (expected −23% queue)
+- Van Ness @ Market: −8s red (expected +18% throughput)
+- 3rd St @ King: +20s green (expected −31% queue)
+- Howard @ 4th: +8s green (expected −14% queue)
+
+RESPONSE STYLE: You are NEXUS — precise, data-driven, concise. Cite specific numbers, routes, ETAs, and intersection IDs. For emergency routing: provide primary route, ETA in minutes, number of signal preemptions, and one alternative. For causal questions: cite attribution percentages. For signal questions: cite specific timing changes and expected impact. Keep responses to 3-5 sentences unless asked for detail. Use → for routes. Never fabricate sensor data. If the operator asks something requiring data beyond 2 hours, note uncertainty increases significantly beyond the 120m horizon.`;
+
+let history=[];
+async function sendMsg(txt){
+  if(!txt.trim())return;
+  const msgs=document.getElementById('chatMsgs');
+  const btn=document.getElementById('chatBtn');
+  const inp=document.getElementById('chatIn');
+  msgs.innerHTML+=`<div class="cm u"><div class="mf op">Operator</div>${esc(txt)}</div>`;
+  inp.value='';btn.disabled=true;scroll();
+  const tid='th-'+Date.now();
+  msgs.innerHTML+=`<div class="cm th" id="${tid}"><div class="mf nx">NEXUS</div><span style="animation:blink 1s infinite;display:inline-block">Analyzing…</span></div>`;
+  scroll();
+  history.push({role:'user',content:txt});
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:SYS,messages:history})
+    });
+    const data=await res.json();
+    const reply=data.content?.[0]?.text||'Unable to reach NEXUS inference layer.';
+    history.push({role:'assistant',content:reply});
+    document.getElementById(tid)?.remove();
+    msgs.innerHTML+=`<div class="cm ai"><div class="mf nx">NEXUS</div>${fmt(reply)}</div>`;
+    scroll();
+  }catch(e){
+    document.getElementById(tid)?.remove();
+    msgs.innerHTML+=`<div class="cm ai"><div class="mf nx">NEXUS</div>Connection error: ${esc(e.message)}. Ensure API is accessible.</div>`;
+    scroll();
+  }
+  btn.disabled=false;
+}
+function fmt(t){
+  return esc(t)
+    .replace(/(\d+\.?\d*\s*min(?:utes?)?)/gi,'<strong style="color:var(--tel)">$1</strong>')
+    .replace(/\bETA:?\s*/gi,'<strong style="color:var(--tel)">ETA: </strong>')
+    .replace(/(\d+(?:\.\d+)?%)/g,'<span style="font-family:var(--mono);color:var(--acc)">$1</span>')
+    .replace(/Route:/gi,'<strong>Route:</strong>')
+    .replace(/→/g,'<span style="color:var(--acc)">→</span>')
+    .replace(/\n\n/g,'<br/><br/>')
+    .replace(/\n/g,'<br/>');
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function scroll(){const m=document.getElementById('chatMsgs');m.scrollTop=m.scrollHeight;}
+document.getElementById('chatBtn').addEventListener('click',()=>sendMsg(document.getElementById('chatIn').value));
+document.getElementById('chatIn').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey)sendMsg(e.target.value);});
+document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>sendMsg(c.textContent)));
+
+// ── STATUS BAR ANIMATION ──
+setInterval(()=>{
+  const lat=document.getElementById('sb-latency');
+  const lag=document.getElementById('sb-lag');
+  if(lat) lat.textContent=Math.round(140+Math.random()*30)+'ms';
+  if(lag) lag.textContent=Math.round(8+Math.random()*12)+'ms';
+},2400);
+
+// ── KEYBOARD SHORTCUTS ──
+document.addEventListener('keydown',e=>{
+  // Number keys 1-5 switch tabs
+  if(!e.target.matches('input,textarea')){
+    const map={'1':'nerve','2':'timeline','3':'signals','4':'sandbox','5':'analytics'};
+    if(map[e.key]){
+      const tab=document.querySelector(`.tab[data-v="${map[e.key]}"]`);
+      if(tab)tab.click();
+    }
+    // ? key shows tour
+    if(e.key==='?'){
+      const tourHtml=document.getElementById('tour');
+      if(!tourHtml){
+        const t=document.createElement('div');
+        t.className='tour-overlay';t.id='tour';
+        t.innerHTML=document.querySelector('.tour-overlay')?.innerHTML||'';
+        document.body.appendChild(t);
+      }
+    }
+    // / key focuses chat
+    if(e.key==='/'){
+      e.preventDefault();
+      document.getElementById('chatIn')?.focus();
+    }
+  }
+});
+
+// ── DEMO AUTO-PROMPT — fires once after 6s if user hasn't typed ──
+let userHasTyped=false;
+document.getElementById('chatIn').addEventListener('input',()=>userHasTyped=true);
+setTimeout(()=>{
+  if(!userHasTyped && history.length===0){
+    sendMsg('Give me a full briefing on tonight\'s biggest traffic risks and what I should do right now.');
+  }
+},6000);
+</script>
+</body>
+</html>
+HTMLEOF
